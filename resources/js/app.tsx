@@ -13,7 +13,10 @@ const theme = extendTheme({
 });
 
 createInertiaApp({
-    resolve: (name) => require(`./Pages/${name}`),
+    resolve: async (name) => {
+        const page = await import(`./Pages/${name}.tsx`);
+        return page.default;
+    },
     setup({ el, App, props }) {
         ReactDOM.createRoot(el).render(
             <ChakraProvider theme={theme}>

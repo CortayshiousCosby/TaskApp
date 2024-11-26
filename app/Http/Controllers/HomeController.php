@@ -9,8 +9,9 @@ class HomeController extends Controller
 {
     public function index(Request $request)
     {
-        return Inertia::render('Home/Index', [
+        return Inertia::render('Home', [
             'title' => 'Admin Dashboard',
+            'greeting' => 'Hello World'
         ]);
     }
 }
