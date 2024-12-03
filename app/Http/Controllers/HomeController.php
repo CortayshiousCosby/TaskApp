@@ -10,8 +10,8 @@ class HomeController extends Controller
     public function index(Request $request)
     {
         return Inertia::render('Home', [
-            'title' => 'Admin Dashboard',
-            'greeting' => 'Hello World'
+            'title' => 'Task Manager',
+            'greeting' => 'Welcome! Let’s get productive and manage your tasks.',
         ]);
     }
 }
