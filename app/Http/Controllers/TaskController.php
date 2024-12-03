@@ -13,7 +13,14 @@ class TaskController extends Controller
     public function index()
     {
         $tasks = Task::all();
-        return inertia('Tasks/Index', ['tasks' => $tasks]);
+
+        // Return JSON if the request expects it
+        if (request()->expectsJson()) {
+            return response()->json($tasks);
+        }
+
+        // Otherwise, return Inertia response
+        return Inertia::render('Tasks/Index', ['tasks' => $tasks]);
     }
 
     public function store(Request $request)
@@ -33,14 +40,17 @@ class TaskController extends Controller
 
     public function update(Request $request, Task $task)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'completed' => 'boolean',
+            'due_date' => 'nullable|date',
         ]);
 
-        $task->update($request->all());
-        return redirect()->back()->with('success', 'Task updated successfully!');
+        $task->update($validated);
+
+        return response()->json($task); // Return the updated task as JSON
     }
 
     public function destroy(Task $task)

@@ -20,6 +20,7 @@ interface Task {
     category: string;
     description?: string;
     completed: boolean;
+    due_date: string;
 }
 
 interface CustomPageProps {
@@ -36,10 +37,11 @@ const Index: FC = () => {
         category: "",
         description: "",
         completed: false,
+        due_date: "",
     });
 
     useEffect(() => {
-        axios.get<Task[]>("/tasks").then((response) => {
+        axios.get<Task[]>("/api/tasks").then((response) => {
             setTasks(response.data);
         });
     }, []);
