@@ -18,5 +18,14 @@ class TaskSeeder extends Seeder
             'due_date' => Carbon::now()->startOfDay()->addDay(), // Midnight of the next day
 
         ]);
+
+        Task::create([
+            'name' => 'Learn React',
+            'category' => 'Productivity',
+            'description' => 'Learn react by completing a ToDo App!',
+            'completed' => false,
+            'due_date' => Carbon::now()->startOfDay()->addDay(), // Midnight of the next day
+
+        ]);
     }
 }
