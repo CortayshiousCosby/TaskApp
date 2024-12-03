@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -17,7 +18,7 @@ return new class extends Migration
             $table->string('category'); // Task category
             $table->text('description')->nullable(); // Optional task description
             $table->boolean('completed')->default(false); // Task completion status
-            $table->timestamp('due_date')->nullable(); // Optional due date
+            $table->timestamp('due_date')->nullable()->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamps(); // Created and updated timestamps
         });
     }

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Task;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 class TaskSeeder extends Seeder
 {
@@ -14,6 +15,8 @@ class TaskSeeder extends Seeder
             'category' => 'Testing',
             'description' => 'This is a test task',
             'completed' => false,
+            'due_date' => Carbon::now()->startOfDay()->addDay(), // Midnight of the next day
+
         ]);
     }
 }

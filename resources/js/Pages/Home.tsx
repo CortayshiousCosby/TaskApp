@@ -113,6 +113,12 @@ const Index: FC = () => {
                             value={newTask.description || ""}
                             onChange={handleInputChange}
                         />
+                        <Input
+                            name="due_date"
+                            type="datetime-local"
+                            value={newTask.due_date || ""}
+                            onChange={handleInputChange}
+                        />
                         <Checkbox
                             name="completed"
                             isChecked={newTask.completed || false}

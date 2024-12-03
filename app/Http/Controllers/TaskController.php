@@ -23,6 +23,7 @@ class TaskController extends Controller
             'category' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'completed' => 'boolean',
+            'due_date' => 'nullable|date',
         ]);
 
         $task = Task::create($validated);
