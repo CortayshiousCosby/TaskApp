@@ -9,6 +9,8 @@ import {
     Textarea,
     Checkbox,
     Stack,
+    Select,
+    SimpleGrid,
     Modal,
     ModalOverlay,
     ModalContent,
@@ -17,9 +19,9 @@ import {
     ModalBody,
     ModalCloseButton,
     useDisclosure,
+    Grid,
 } from "@chakra-ui/react";
 import React, { FC, useState, useEffect, useRef } from "react";
-import { usePage } from "@inertiajs/react";
 import axios from "axios";
 import dayjs from "dayjs";
 
@@ -32,14 +34,9 @@ interface Task {
     due_date: string | null;
 }
 
-interface CustomPageProps {
-    greeting: string;
-}
+const tasksPerPage = 6;
 
 const Index: FC = () => {
-    const { greeting } = usePage<{ props: CustomPageProps }>().props;
-    const safeGreeting = (greeting ?? "Welcome to the Task App!") as string;
-
     const [tasks, setTasks] = useState<Task[]>([]);
     const [newTask, setNewTask] = useState<Partial<Task>>({
         name: "",
@@ -50,6 +47,9 @@ const Index: FC = () => {
     });
     const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [currentPage, setCurrentPage] = useState<number>(1);
 
     const { isOpen, onOpen, onClose } = useDisclosure();
     const formRef = useRef<HTMLDivElement | null>(null);
@@ -61,13 +61,7 @@ const Index: FC = () => {
     const fetchTasks = async () => {
         try {
             const response = await axios.get<Task[]>("/api/tasks");
-            const sortedTasks = response.data.sort((a, b) => {
-                if (a.completed !== b.completed) return a.completed ? 1 : -1; // Completed tasks go to the bottom
-                if (!a.due_date) return 1; // No due date tasks go to the bottom
-                if (!b.due_date) return -1;
-                return dayjs(a.due_date).diff(dayjs(b.due_date)); // Sort by due date
-            });
-            setTasks(sortedTasks);
+            setTasks(response.data);
         } catch (error) {
             console.error("Error fetching tasks:", error);
         }
@@ -95,15 +89,7 @@ const Index: FC = () => {
     const handleAddTask = async () => {
         try {
             const response = await axios.post<Task>("/tasks", newTask);
-            setTasks(
-                [...tasks, response.data].sort((a, b) => {
-                    if (a.completed !== b.completed)
-                        return a.completed ? 1 : -1;
-                    if (!a.due_date) return 1;
-                    if (!b.due_date) return -1;
-                    return dayjs(a.due_date).diff(dayjs(b.due_date));
-                })
-            );
+            setTasks([...tasks, response.data]);
             setNewTask({
                 name: "",
                 category: "",
@@ -125,17 +111,9 @@ const Index: FC = () => {
                 editingTask
             );
             setTasks((prevTasks) =>
-                prevTasks
-                    .map((task) =>
-                        task.id === response.data.id ? response.data : task
-                    )
-                    .sort((a, b) => {
-                        if (a.completed !== b.completed)
-                            return a.completed ? 1 : -1;
-                        if (!a.due_date) return 1;
-                        if (!b.due_date) return -1;
-                        return dayjs(a.due_date).diff(dayjs(b.due_date));
-                    })
+                prevTasks.map((task) =>
+                    task.id === response.data.id ? response.data : task
+                )
             );
             setEditingTask(null);
         } catch (error) {
@@ -149,15 +127,7 @@ const Index: FC = () => {
         try {
             await axios.delete(`/tasks/${taskToDelete}`);
             setTasks((prevTasks) =>
-                prevTasks
-                    .filter((task) => task.id !== taskToDelete)
-                    .sort((a, b) => {
-                        if (a.completed !== b.completed)
-                            return a.completed ? 1 : -1;
-                        if (!a.due_date) return 1;
-                        if (!b.due_date) return -1;
-                        return dayjs(a.due_date).diff(dayjs(b.due_date));
-                    })
+                prevTasks.filter((task) => task.id !== taskToDelete)
             );
         } catch (error) {
             console.error("Error deleting task:", error);
@@ -168,12 +138,7 @@ const Index: FC = () => {
     };
 
     const handleEditButtonClick = (task: Task) => {
-        setEditingTask({
-            ...task,
-            due_date: task.due_date
-                ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
-                : "", // Format for `datetime-local` input
-        });
+        setEditingTask(task);
         formRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
@@ -182,181 +147,286 @@ const Index: FC = () => {
         onOpen();
     };
 
-    const getTaskBgColor = (task: Task): string => {
-        if (task.completed) return "green.100"; // Completed tasks
-        if (!task.due_date) return "blue.100"; // No due date
-        const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hour");
-        if (hoursDiff <= 24) return "red.100"; // Less than 24 hours
-        if (hoursDiff <= 48) return "orange.100"; // 24-48 hours
-        return "yellow.100"; // More than 48 hours
-    };
+    const filteredTasks = tasks.filter((task) => {
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const matchesSearch =
+                task.name.toLowerCase().includes(query) ||
+                (task.category &&
+                    task.category.toLowerCase().includes(query)) ||
+                (task.description &&
+                    task.description.toLowerCase().includes(query));
+            if (!matchesSearch) return false;
+        }
 
-    const formatDueDate = (dueDate: string | null): string => {
-        if (!dueDate) return "No Due Date";
-        return dayjs(dueDate).format("YYYY-MM-DD HH:mm");
+        if (filterStatus === "completed") return task.completed;
+        if (filterStatus === "pending") return !task.completed;
+        if (filterStatus === "urgent" && !task.completed)
+            return dayjs(task.due_date).diff(dayjs(), "hours") <= 24;
+        if (filterStatus === "coming_soon" && !task.completed)
+            return (
+                dayjs(task.due_date).diff(dayjs(), "hours") > 24 &&
+                dayjs(task.due_date).diff(dayjs(), "hours") <= 48
+            );
+        if (filterStatus === "long_term" && !task.completed)
+            return dayjs(task.due_date).diff(dayjs(), "hours") > 48;
+        if (filterStatus === "no_due_date" && !task.completed)
+            return !task.due_date;
+        return true;
+    });
+
+    const groupedTasks = filteredTasks.sort((a, b) => {
+        if (!a.due_date) return 1; // No due date tasks go last
+        if (!b.due_date) return -1;
+        return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
+    });
+
+    const paginatedTasks = groupedTasks.slice(
+        (currentPage - 1) * tasksPerPage,
+        currentPage * tasksPerPage
+    );
+
+    const getTaskBgColor = (task: Task): string => {
+        if (task.completed) return "green.100";
+        if (!task.due_date) return "blue.100";
+        const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+        if (hoursDiff <= 24) return "red.100";
+        if (hoursDiff <= 48) return "orange.100";
+        return "yellow.100";
     };
 
     return (
-        <Container mt="10">
-            <VStack align="stretch" gap="12">
-                <Box>
-                    <Heading as="h1" size="xl" textAlign="center">
-                        {safeGreeting}
-                    </Heading>
-                    <Text
-                        mt="2"
-                        fontSize="lg"
-                        color="gray.600"
-                        textAlign="center"
-                    >
-                        Start organizing your tasks and achieve your goals!
-                    </Text>
-                </Box>
+        <Container mt="10" maxW="container.xl">
+            {/* Header */}
+            <Box textAlign="center" mb="10">
+                <Heading as="h1" size="2xl">
+                    Welcome to Task Master Pro!
+                </Heading>
+                <Text fontSize="lg" color="gray.600" mt="2">
+                    The ultimate task management app to keep you on track and
+                    productive.
+                </Text>
+            </Box>
 
-                <Box borderWidth="1px" borderRadius="lg" p="5" ref={formRef}>
-                    <Heading as="h2" size="lg" mb="4">
-                        {editingTask ? "Edit Task" : "Add New Task"}
-                    </Heading>
-                    <Stack spacing="4">
-                        <Input
-                            name="name"
-                            placeholder="Task Name"
-                            value={
-                                editingTask
-                                    ? editingTask.name || ""
-                                    : newTask.name || ""
-                            }
-                            onChange={handleInputChange}
-                        />
-                        <Input
-                            name="category"
-                            placeholder="Category"
-                            value={
-                                editingTask
-                                    ? editingTask.category || ""
-                                    : newTask.category || ""
-                            }
-                            onChange={handleInputChange}
-                        />
-                        <Textarea
-                            name="description"
-                            placeholder="Description"
-                            value={
-                                editingTask
-                                    ? editingTask.description || ""
-                                    : newTask.description || ""
-                            }
-                            onChange={handleInputChange}
-                        />
-                        <Input
-                            name="due_date"
-                            type="datetime-local"
-                            value={
-                                editingTask
-                                    ? editingTask.due_date || ""
-                                    : newTask.due_date || ""
-                            }
-                            onChange={handleInputChange}
-                        />
-                        <Checkbox
-                            name="completed"
-                            isChecked={
-                                editingTask
-                                    ? editingTask.completed || false
-                                    : newTask.completed || false
-                            }
-                            onChange={handleInputChange}
-                        >
-                            Completed
-                        </Checkbox>
-                        <Button
-                            colorScheme="green"
-                            onClick={
-                                editingTask ? handleEditTask : handleAddTask
-                            }
-                        >
-                            {editingTask ? "Save Changes" : "Add Task"}
-                        </Button>
-                        {editingTask && (
-                            <Button
-                                colorScheme="gray"
-                                onClick={() => setEditingTask(null)}
-                            >
-                                Cancel
-                            </Button>
-                        )}
-                    </Stack>
-                </Box>
-
-                {tasks.map((task) => (
+            {/* Grid Layout */}
+            <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap="6">
+                {/* Left: Form & Filters */}
+                <VStack spacing="6">
                     <Box
-                        key={task.id}
+                        ref={formRef}
                         borderWidth="1px"
+                        p="6"
                         borderRadius="lg"
-                        p="5"
-                        bg={getTaskBgColor(task)}
-                        display="flex"
-                        flexDirection="column"
-                        gap="2"
                     >
-                        <Heading as="h3" size="md">
-                            {task.name}
+                        <Heading as="h2" size="lg" mb="4">
+                            {editingTask ? "Edit Task" : "Add New Task"}
                         </Heading>
-                        <Box>
-                            <strong>Category:</strong> {task.category || "None"}
-                        </Box>
-                        <Box>
-                            <strong>Description:</strong>{" "}
-                            {task.description || "No description"}
-                        </Box>
-                        <Box>
-                            <strong>Status:</strong>{" "}
-                            {task.completed ? "Completed" : "Pending"}
-                        </Box>
-                        <Box>
-                            <strong>Due Date:</strong>{" "}
-                            {formatDueDate(task.due_date)}
-                        </Box>
-                        <Stack direction="row" spacing={4} mt={4}>
-                            <Button
-                                colorScheme="blue"
-                                onClick={() => handleEditButtonClick(task)}
+                        <Stack spacing="4">
+                            <Input
+                                name="name"
+                                placeholder="Task Name"
+                                value={
+                                    editingTask
+                                        ? editingTask.name || ""
+                                        : newTask.name || ""
+                                }
+                                onChange={handleInputChange}
+                            />
+                            <Input
+                                name="category"
+                                placeholder="Category"
+                                value={
+                                    editingTask
+                                        ? editingTask.category || ""
+                                        : newTask.category || ""
+                                }
+                                onChange={handleInputChange}
+                            />
+                            <Textarea
+                                name="description"
+                                placeholder="Description"
+                                value={
+                                    editingTask
+                                        ? editingTask.description || ""
+                                        : newTask.description || ""
+                                }
+                                onChange={handleInputChange}
+                            />
+                            <Input
+                                name="due_date"
+                                type="datetime-local"
+                                value={
+                                    editingTask
+                                        ? editingTask.due_date || ""
+                                        : newTask.due_date || ""
+                                }
+                                onChange={handleInputChange}
+                            />
+                            <Checkbox
+                                name="completed"
+                                isChecked={
+                                    editingTask
+                                        ? editingTask.completed || false
+                                        : newTask.completed || false
+                                }
+                                onChange={handleInputChange}
                             >
-                                Edit
-                            </Button>
+                                Completed
+                            </Checkbox>
                             <Button
-                                colorScheme="red"
-                                onClick={() => openDeleteModal(task.id)}
+                                colorScheme="green"
+                                onClick={
+                                    editingTask ? handleEditTask : handleAddTask
+                                }
                             >
-                                Delete
+                                {editingTask ? "Save Changes" : "Add Task"}
                             </Button>
+                            {editingTask && (
+                                <Button
+                                    colorScheme="gray"
+                                    onClick={() => setEditingTask(null)}
+                                >
+                                    Cancel
+                                </Button>
+                            )}
                         </Stack>
                     </Box>
-                ))}
 
-                <Modal isOpen={isOpen} onClose={onClose}>
-                    <ModalOverlay />
-                    <ModalContent>
-                        <ModalHeader>Confirm Deletion</ModalHeader>
-                        <ModalCloseButton />
-                        <ModalBody>
-                            Are you sure you want to delete this task? This
-                            action cannot be undone.
-                        </ModalBody>
-                        <ModalFooter>
-                            <Button
-                                colorScheme="red"
-                                onClick={handleDeleteTask}
+                    <Box>
+                        <Heading as="h2" size="lg" mb="4">
+                            Search & Filter
+                        </Heading>
+                        <Stack spacing="4">
+                            <Input
+                                placeholder="Search (name, category, description)"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <Select
+                                placeholder="Filter tasks"
+                                value={filterStatus}
+                                onChange={(e) =>
+                                    setFilterStatus(e.target.value)
+                                }
                             >
-                                Delete
-                            </Button>
-                            <Button variant="ghost" onClick={onClose}>
-                                Cancel
-                            </Button>
-                        </ModalFooter>
-                    </ModalContent>
-                </Modal>
-            </VStack>
+                                <option value="all">All Tasks</option>
+                                <option value="completed">Completed</option>
+                                <option value="pending">Pending</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="coming_soon">Coming Soon</option>
+                                <option value="long_term">Long Term</option>
+                                <option value="no_due_date">No Due Date</option>
+                            </Select>
+                        </Stack>
+                    </Box>
+                </VStack>
+
+                {/* Right: Task List */}
+                <Box>
+                    <Heading as="h2" size="lg" mb="4">
+                        Task List
+                    </Heading>
+                    <SimpleGrid columns={[1, null, 2]} spacing="6">
+                        {paginatedTasks.map((task) => (
+                            <Box
+                                key={task.id}
+                                bg={getTaskBgColor(task)}
+                                borderWidth="1px"
+                                p="6"
+                                borderRadius="lg"
+                            >
+                                <Heading as="h3" size="md" mb="2">
+                                    {task.name}
+                                </Heading>
+                                <Text>
+                                    <strong>Category:</strong>{" "}
+                                    {task.category || "N/A"}
+                                </Text>
+                                <Text>
+                                    <strong>Description:</strong>{" "}
+                                    {task.description || "No Description"}
+                                </Text>
+                                <Text>
+                                    <strong>Status:</strong>{" "}
+                                    {task.completed ? "Completed" : "Pending"}
+                                </Text>
+                                <Text>
+                                    <strong>Due Date:</strong>{" "}
+                                    {task.due_date
+                                        ? dayjs(task.due_date).format(
+                                              "YYYY-MM-DD HH:mm"
+                                          )
+                                        : "No Due Date"}
+                                </Text>
+                                <Stack direction="row" mt="4" spacing="2">
+                                    <Button
+                                        size="sm"
+                                        colorScheme="blue"
+                                        onClick={() =>
+                                            handleEditButtonClick(task)
+                                        }
+                                    >
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        colorScheme="red"
+                                        onClick={() => openDeleteModal(task.id)}
+                                    >
+                                        Delete
+                                    </Button>
+                                </Stack>
+                            </Box>
+                        ))}
+                    </SimpleGrid>
+
+                    {/* Pagination */}
+                    <Stack direction="row" justify="center" mt="6">
+                        <Button
+                            size="sm"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage((prev) => prev - 1)}
+                        >
+                            Previous
+                        </Button>
+                        <Text>
+                            Page {currentPage} of{" "}
+                            {Math.ceil(groupedTasks.length / tasksPerPage)}
+                        </Text>
+                        <Button
+                            size="sm"
+                            disabled={
+                                currentPage ===
+                                Math.ceil(groupedTasks.length / tasksPerPage)
+                            }
+                            onClick={() => setCurrentPage((prev) => prev + 1)}
+                        >
+                            Next
+                        </Button>
+                    </Stack>
+                </Box>
+            </Grid>
+
+            {/* Delete Confirmation Modal */}
+            <Modal isOpen={isOpen} onClose={onClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Confirm Deletion</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        Are you sure you want to delete this task? This action
+                        cannot be undone.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button colorScheme="red" onClick={handleDeleteTask}>
+                            Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onClose}>
+                            Cancel
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Container>
     );
 };

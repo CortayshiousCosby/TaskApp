@@ -19,6 +19,7 @@
         "vite": "^5.0"
     },
     "dependencies": {
+        "@chakra-ui/icons": "^2.2.4",
         "@chakra-ui/react": "^2.6.0",
         "@emotion/react": "^11.13.5",
         "@emotion/styled": "^11.13.5",
