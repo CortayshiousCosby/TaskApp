@@ -25,6 +25,7 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
+        \Log::debug($request->toArray());
         $validated = $request->validate([
             'name' => 'required|string|max:255', // Expect "name" field
             'category' => 'nullable|string|max:255',

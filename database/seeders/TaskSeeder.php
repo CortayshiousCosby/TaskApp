@@ -25,7 +25,6 @@ class TaskSeeder extends Seeder
             'description' => 'Learn react by completing a ToDo App!',
             'completed' => false,
             'due_date' => Carbon::now()->startOfDay()->addDay(), // Midnight of the next day
-
         ]);
     }
 }
