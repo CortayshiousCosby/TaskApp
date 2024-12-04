@@ -90,18 +90,20 @@ const Index: FC = () => {
     const handleAddTask = async () => {
         try {
             const response = await axios.post("/tasks", newTask);
-
             if (response.data.status === "success") {
                 setTasks([...tasks, response.data.task]);
-                console.log(response.data.message); // API message
+                setNewTask({
+                    name: "",
+                    category: "",
+                    description: "",
+                    completed: false,
+                    due_date: "",
+                });
             } else {
-                console.error(response.data.message);
+                console.error("Error adding task:", response.data.message);
             }
         } catch (error) {
-            console.error(
-                "Error adding task:",
-                error.response?.data?.message || error.message
-            );
+            console.error("Error adding task:", error);
         }
     };
 
@@ -174,19 +176,29 @@ const Index: FC = () => {
             if (!matchesSearch) return false;
         }
 
+        // Handle filtering based on status
         if (filterStatus === "completed") return task.completed;
         if (filterStatus === "pending") return !task.completed;
-        if (filterStatus === "urgent" && !task.completed)
-            return dayjs(task.due_date).diff(dayjs(), "hours") <= 24;
-        if (filterStatus === "coming_soon" && !task.completed)
+        if (filterStatus === "urgent")
             return (
+                !task.completed &&
+                dayjs(task.due_date).diff(dayjs(), "hours") <= 24
+            );
+        if (filterStatus === "coming_soon")
+            return (
+                !task.completed &&
                 dayjs(task.due_date).diff(dayjs(), "hours") > 24 &&
                 dayjs(task.due_date).diff(dayjs(), "hours") <= 48
             );
-        if (filterStatus === "long_term" && !task.completed)
-            return dayjs(task.due_date).diff(dayjs(), "hours") > 48;
-        if (filterStatus === "no_due_date" && !task.completed)
-            return !task.due_date;
+        if (filterStatus === "long_term")
+            return (
+                !task.completed &&
+                dayjs(task.due_date).diff(dayjs(), "hours") > 48
+            );
+        if (filterStatus === "no_due_date")
+            return !task.completed && !task.due_date;
+
+        // Default case for "all" filter
         return true;
     });
 
