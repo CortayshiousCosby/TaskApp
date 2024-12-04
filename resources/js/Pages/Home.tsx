@@ -137,8 +137,6 @@ const Index: FC = () => {
 
         try {
             const response = await axios.delete(`/tasks/${taskToDelete}`);
-            console.log("Delete response:", response.data);
-
             if (response.data.status === "success") {
                 setTasks((prevTasks) =>
                     prevTasks.filter((task) => task.id !== taskToDelete)
@@ -203,9 +201,30 @@ const Index: FC = () => {
     });
 
     const groupedTasks = filteredTasks.sort((a, b) => {
-        if (!a.due_date) return 1; // No due date tasks go last
+        const getPriority = (task: Task): number => {
+            if (task.completed) return 4; // Completed tasks have lowest priority
+            if (!task.due_date) return 3; // No due date tasks come after upcoming
+            const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+            if (hoursDiff <= 24) return 1; // Urgent tasks come first
+            if (hoursDiff <= 48) return 2; // Coming soon tasks come next
+            return 3; // Long-term tasks
+        };
+
+        const priorityA = getPriority(a);
+        const priorityB = getPriority(b);
+
+        if (priorityA !== priorityB) return priorityA - priorityB;
+
+        // Secondary sorting by due date (ascending)
+        if (a.due_date && b.due_date) {
+            return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
+        }
+
+        // No due date tasks are pushed further down
+        if (!a.due_date) return 1;
         if (!b.due_date) return -1;
-        return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
+
+        return 0; // Default fallback
     });
 
     const paginatedTasks = groupedTasks.slice(
