@@ -21,6 +21,7 @@ import {
     useDisclosure,
     Grid,
 } from "@chakra-ui/react";
+import PageMessage from "../components/Common/PageMessage";
 import React, { FC, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -88,17 +89,19 @@ const Index: FC = () => {
 
     const handleAddTask = async () => {
         try {
-            const response = await axios.post<Task>("/tasks", newTask);
-            setTasks([...tasks, response.data]);
-            setNewTask({
-                name: "",
-                category: "",
-                description: "",
-                completed: false,
-                due_date: "",
-            });
+            const response = await axios.post("/tasks", newTask);
+
+            if (response.data.status === "success") {
+                setTasks([...tasks, response.data.task]);
+                console.log(response.data.message); // API message
+            } else {
+                console.error(response.data.message);
+            }
         } catch (error) {
-            console.error("Error adding task:", error);
+            console.error(
+                "Error adding task:",
+                error.response?.data?.message || error.message
+            );
         }
     };
 
@@ -106,16 +109,22 @@ const Index: FC = () => {
         if (!editingTask || !editingTask.id) return;
 
         try {
-            const response = await axios.put<Task>(
+            const response = await axios.put(
                 `/tasks/${editingTask.id}`,
                 editingTask
             );
-            setTasks((prevTasks) =>
-                prevTasks.map((task) =>
-                    task.id === response.data.id ? response.data : task
-                )
-            );
-            setEditingTask(null);
+            if (response.data.status === "success") {
+                setTasks((prevTasks) =>
+                    prevTasks.map((task) =>
+                        task.id === response.data.task.id
+                            ? response.data.task
+                            : task
+                    )
+                );
+                setEditingTask(null);
+            } else {
+                console.error("Error updating task:", response.data.message);
+            }
         } catch (error) {
             console.error("Error updating task:", error);
         }
@@ -125,10 +134,16 @@ const Index: FC = () => {
         if (!taskToDelete) return;
 
         try {
-            await axios.delete(`/tasks/${taskToDelete}`);
-            setTasks((prevTasks) =>
-                prevTasks.filter((task) => task.id !== taskToDelete)
-            );
+            const response = await axios.delete(`/tasks/${taskToDelete}`);
+            console.log("Delete response:", response.data);
+
+            if (response.data.status === "success") {
+                setTasks((prevTasks) =>
+                    prevTasks.filter((task) => task.id !== taskToDelete)
+                );
+            } else {
+                console.error("Delete error:", response.data.message);
+            }
         } catch (error) {
             console.error("Error deleting task:", error);
         } finally {
@@ -197,6 +212,9 @@ const Index: FC = () => {
 
     return (
         <Container mt="10" maxW="container.xl">
+            {/* Page Message */}
+            <PageMessage />
+
             {/* Header */}
             <Box textAlign="center" mb="10">
                 <Heading as="h1" size="2xl">
