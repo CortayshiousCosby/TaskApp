@@ -21,6 +21,7 @@ import {
     useDisclosure,
     Grid,
 } from "@chakra-ui/react";
+import PageMessage from "../components/Common/PageMessage";
 import React, { FC, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -88,15 +89,19 @@ const Index: FC = () => {
 
     const handleAddTask = async () => {
         try {
-            const response = await axios.post<Task>("/tasks", newTask);
-            setTasks([...tasks, response.data]);
-            setNewTask({
-                name: "",
-                category: "",
-                description: "",
-                completed: false,
-                due_date: "",
-            });
+            const response = await axios.post("/tasks", newTask);
+            if (response.data.status === "success") {
+                setTasks([...tasks, response.data.task]);
+                setNewTask({
+                    name: "",
+                    category: "",
+                    description: "",
+                    completed: false,
+                    due_date: "",
+                });
+            } else {
+                console.error("Error adding task:", response.data.message);
+            }
         } catch (error) {
             console.error("Error adding task:", error);
         }
@@ -106,16 +111,22 @@ const Index: FC = () => {
         if (!editingTask || !editingTask.id) return;
 
         try {
-            const response = await axios.put<Task>(
+            const response = await axios.put(
                 `/tasks/${editingTask.id}`,
                 editingTask
             );
-            setTasks((prevTasks) =>
-                prevTasks.map((task) =>
-                    task.id === response.data.id ? response.data : task
-                )
-            );
-            setEditingTask(null);
+            if (response.data.status === "success") {
+                setTasks((prevTasks) =>
+                    prevTasks.map((task) =>
+                        task.id === response.data.task.id
+                            ? response.data.task
+                            : task
+                    )
+                );
+                setEditingTask(null);
+            } else {
+                console.error("Error updating task:", response.data.message);
+            }
         } catch (error) {
             console.error("Error updating task:", error);
         }
@@ -125,10 +136,14 @@ const Index: FC = () => {
         if (!taskToDelete) return;
 
         try {
-            await axios.delete(`/tasks/${taskToDelete}`);
-            setTasks((prevTasks) =>
-                prevTasks.filter((task) => task.id !== taskToDelete)
-            );
+            const response = await axios.delete(`/tasks/${taskToDelete}`);
+            if (response.data.status === "success") {
+                setTasks((prevTasks) =>
+                    prevTasks.filter((task) => task.id !== taskToDelete)
+                );
+            } else {
+                console.error("Delete error:", response.data.message);
+            }
         } catch (error) {
             console.error("Error deleting task:", error);
         } finally {
@@ -159,26 +174,57 @@ const Index: FC = () => {
             if (!matchesSearch) return false;
         }
 
+        // Handle filtering based on status
         if (filterStatus === "completed") return task.completed;
         if (filterStatus === "pending") return !task.completed;
-        if (filterStatus === "urgent" && !task.completed)
-            return dayjs(task.due_date).diff(dayjs(), "hours") <= 24;
-        if (filterStatus === "coming_soon" && !task.completed)
+        if (filterStatus === "urgent")
             return (
+                !task.completed &&
+                dayjs(task.due_date).diff(dayjs(), "hours") <= 24
+            );
+        if (filterStatus === "coming_soon")
+            return (
+                !task.completed &&
                 dayjs(task.due_date).diff(dayjs(), "hours") > 24 &&
                 dayjs(task.due_date).diff(dayjs(), "hours") <= 48
             );
-        if (filterStatus === "long_term" && !task.completed)
-            return dayjs(task.due_date).diff(dayjs(), "hours") > 48;
-        if (filterStatus === "no_due_date" && !task.completed)
-            return !task.due_date;
+        if (filterStatus === "long_term")
+            return (
+                !task.completed &&
+                dayjs(task.due_date).diff(dayjs(), "hours") > 48
+            );
+        if (filterStatus === "no_due_date")
+            return !task.completed && !task.due_date;
+
+        // Default case for "all" filter
         return true;
     });
 
     const groupedTasks = filteredTasks.sort((a, b) => {
-        if (!a.due_date) return 1; // No due date tasks go last
+        const getPriority = (task: Task): number => {
+            if (task.completed) return 4; // Completed tasks have lowest priority
+            if (!task.due_date) return 3; // No due date tasks come after upcoming
+            const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+            if (hoursDiff <= 24) return 1; // Urgent tasks come first
+            if (hoursDiff <= 48) return 2; // Coming soon tasks come next
+            return 3; // Long-term tasks
+        };
+
+        const priorityA = getPriority(a);
+        const priorityB = getPriority(b);
+
+        if (priorityA !== priorityB) return priorityA - priorityB;
+
+        // Secondary sorting by due date (ascending)
+        if (a.due_date && b.due_date) {
+            return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
+        }
+
+        // No due date tasks are pushed further down
+        if (!a.due_date) return 1;
         if (!b.due_date) return -1;
-        return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
+
+        return 0; // Default fallback
     });
 
     const paginatedTasks = groupedTasks.slice(
@@ -197,6 +243,9 @@ const Index: FC = () => {
 
     return (
         <Container mt="10" maxW="container.xl">
+            {/* Page Message */}
+            <PageMessage />
+
             {/* Header */}
             <Box textAlign="center" mb="10">
                 <Heading as="h1" size="2xl">

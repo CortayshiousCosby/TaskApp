@@ -1,12 +1,11 @@
 <?php
 
-
 namespace App\Http\Controllers;
 
 use App\Models\Task;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+use App\Entities\Elements\PageMessage;
 
 class TaskController extends Controller
 {
@@ -14,49 +13,103 @@ class TaskController extends Controller
     {
         $tasks = Task::all();
 
-        // Return JSON if the request expects it
         if (request()->expectsJson()) {
             return response()->json($tasks);
         }
 
-        // Otherwise, return Inertia response
         return Inertia::render('Tasks/Index', ['tasks' => $tasks]);
     }
 
     public function store(Request $request)
     {
-        \Log::debug($request->toArray());
-        $validated = $request->validate([
-            'name' => 'required|string|max:255', // Expect "name" field
-            'category' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'completed' => 'boolean',
-            'due_date' => 'nullable|date',
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'category' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'completed' => 'boolean',
+                'due_date' => 'nullable|date',
+            ]);
 
-        $task = Task::create($validated);
+            $task = Task::create($validated);
 
-        return response()->json($task, 201); // Return the created task as JSON
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Task created successfully.',
+                    'task' => $task,
+                ]);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::success('Task created successfully.'));
+        } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to create task: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to create task: ' . $e->getMessage()));
+        }
     }
 
     public function update(Request $request, Task $task)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'category' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'completed' => 'boolean',
-            'due_date' => 'nullable|date',
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'category' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'completed' => 'boolean',
+                'due_date' => 'nullable|date',
+            ]);
 
-        $task->update($validated);
+            $task->update($validated);
 
-        return response()->json($task); // Return the updated task as JSON
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Task updated successfully.',
+                    'task' => $task,
+                ]);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::success('Task updated successfully.'));
+        } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to update task: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to update task: ' . $e->getMessage()));
+        }
     }
 
     public function destroy(Task $task)
     {
-        $task->delete();
-        return response()->json(['message' => 'Task deleted successfully!'], 200);
+        try {
+            $task->delete();
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Task deleted successfully.',
+                ]);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::success('Task deleted successfully.'));
+        } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to delete task: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to delete task: ' . $e->getMessage()));
+        }
     }
 }
