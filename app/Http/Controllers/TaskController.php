@@ -13,12 +13,10 @@ class TaskController extends Controller
     {
         $tasks = Task::all();
 
-        // Return JSON if the request expects it
         if (request()->expectsJson()) {
             return response()->json($tasks);
         }
 
-        // Otherwise, return Inertia response
         return Inertia::render('Tasks/Index', ['tasks' => $tasks]);
     }
 
@@ -35,16 +33,24 @@ class TaskController extends Controller
 
             $task = Task::create($validated);
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Task created successfully.',
-                'task' => $task,
-            ]);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Task created successfully.',
+                    'task' => $task,
+                ]);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::success('Task created successfully.'));
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to create task: ' . $e->getMessage(),
-            ], 500);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to create task: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to create task: ' . $e->getMessage()));
         }
     }
 
@@ -61,16 +67,24 @@ class TaskController extends Controller
 
             $task->update($validated);
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Task updated successfully.',
-                'task' => $task,
-            ]);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Task updated successfully.',
+                    'task' => $task,
+                ]);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::success('Task updated successfully.'));
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to update task: ' . $e->getMessage(),
-            ], 500);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to update task: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to update task: ' . $e->getMessage()));
         }
     }
 
@@ -79,18 +93,23 @@ class TaskController extends Controller
         try {
             $task->delete();
 
-            // Return JSON for the frontend to handle success
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Task deleted successfully.',
-            ]);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Task deleted successfully.',
+                ]);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::success('Task deleted successfully.'));
         } catch (\Exception $e) {
-            // Return JSON for error handling
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to delete task: ' . $e->getMessage(),
-            ], 500);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to delete task: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to delete task: ' . $e->getMessage()));
         }
-        return back()->with('pageMessage', PageMessage::success('Task deleted successfully.'));
     }
 }
