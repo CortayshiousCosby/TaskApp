@@ -20,6 +20,7 @@ import {
     ModalCloseButton,
     useDisclosure,
     Grid,
+    useToast,
 } from "@chakra-ui/react";
 import PageMessage from "../components/Common/PageMessage";
 import React, { FC, useState, useEffect, useRef } from "react";
@@ -38,6 +39,7 @@ interface Task {
 const tasksPerPage = 6;
 
 const Index: FC = () => {
+    const toast = useToast();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [newTask, setNewTask] = useState<Partial<Task>>({
         name: "",
@@ -99,11 +101,33 @@ const Index: FC = () => {
                     completed: false,
                     due_date: "",
                 });
+                toast({
+                    title: "Task Added",
+                    description: response.data.message,
+                    status: "success",
+                    duration: 5000,
+                    isClosable: true,
+                    position: "top-right",
+                });
             } else {
-                console.error("Error adding task:", response.data.message);
+                toast({
+                    title: "Error Adding Task",
+                    description: response.data.message,
+                    status: "error",
+                    duration: 5000,
+                    isClosable: true,
+                    position: "top-right",
+                });
             }
         } catch (error) {
-            console.error("Error adding task:", error);
+            toast({
+                title: "Error Adding Task",
+                description: "Ensure task name and category are not blank",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+                position: "top-right",
+            });
         }
     };
 
@@ -124,11 +148,33 @@ const Index: FC = () => {
                     )
                 );
                 setEditingTask(null);
+                toast({
+                    title: "Task Updated",
+                    description: response.data.message,
+                    status: "success",
+                    duration: 5000,
+                    isClosable: true,
+                    position: "top-right",
+                });
             } else {
-                console.error("Error updating task:", response.data.message);
+                toast({
+                    title: "Error Updating Task",
+                    description: response.data.message,
+                    status: "error",
+                    duration: 5000,
+                    isClosable: true,
+                    position: "top-right",
+                });
             }
         } catch (error) {
-            console.error("Error updating task:", error);
+            toast({
+                title: "Error Updating Task",
+                description: "Ensure task name and category are not blank",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+                position: "top-right",
+            });
         }
     };
 
@@ -141,11 +187,33 @@ const Index: FC = () => {
                 setTasks((prevTasks) =>
                     prevTasks.filter((task) => task.id !== taskToDelete)
                 );
+                toast({
+                    title: "Task Deleted",
+                    description: response.data.message,
+                    status: "success",
+                    duration: 5000,
+                    isClosable: true,
+                    position: "top-right",
+                });
             } else {
-                console.error("Delete error:", response.data.message);
+                toast({
+                    title: "Error Deleting Task",
+                    description: response.data.message,
+                    status: "error",
+                    duration: 5000,
+                    isClosable: true,
+                    position: "top-right",
+                });
             }
         } catch (error) {
-            console.error("Error deleting task:", error);
+            toast({
+                title: "Unexpected Error",
+                description: "An error occurred while deleting the task.",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+                position: "top-right",
+            });
         } finally {
             setTaskToDelete(null);
             onClose();
