@@ -23,6 +23,7 @@ import TaskCard from "../components/Tasks/TaskCard";
 import TaskFilter from "../components/Tasks/TaskFilter";
 import TaskPagination from "../components/Tasks/TaskPagination";
 import axios from "axios";
+import dayjs from "dayjs";
 
 interface Task {
     id: number;
@@ -218,19 +219,46 @@ const Home: FC = () => {
         }
     };
 
-    const filteredTasks = tasks.filter((task) => {
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            return (
-                task.name.toLowerCase().includes(query) ||
-                (task.category &&
-                    task.category.toLowerCase().includes(query)) ||
-                (task.description &&
-                    task.description.toLowerCase().includes(query))
-            );
-        }
-        return true;
-    });
+    const filteredTasks = tasks
+        .filter((task) => {
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const matchesSearch =
+                    task.name.toLowerCase().includes(query) ||
+                    (task.category &&
+                        task.category.toLowerCase().includes(query)) ||
+                    (task.description &&
+                        task.description.toLowerCase().includes(query));
+                if (!matchesSearch) return false;
+            }
+
+            if (filterStatus === "completed") return task.completed;
+            if (filterStatus === "pending") return !task.completed;
+
+            return true;
+        })
+        .sort((a, b) => {
+            const getPriority = (task: Task): number => {
+                if (task.completed) return 5; // Completed tasks have the lowest priority
+                if (!task.due_date) return 4; // No due date tasks are next
+                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+                if (hoursDiff <= 24) return 1; // Urgent tasks
+                if (hoursDiff <= 48) return 2; // Coming soon tasks
+                return 3; // Long term tasks
+            };
+
+            const priorityA = getPriority(a);
+            const priorityB = getPriority(b);
+
+            if (priorityA !== priorityB) return priorityA - priorityB;
+
+            // Secondary sorting by due date (earlier comes first)
+            if (a.due_date && b.due_date) {
+                return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
+            }
+
+            return 0; // Fallback for equal priority
+        });
 
     const paginatedTasks = filteredTasks.slice(
         (currentPage - 1) * tasksPerPage,
