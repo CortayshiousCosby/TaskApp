@@ -9,6 +9,14 @@ import {
     useDisclosure,
     useToast,
     SimpleGrid,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalCloseButton,
+    ModalBody,
+    ModalFooter,
+    Button,
 } from "@chakra-ui/react";
 import TaskForm from "../components/Tasks/TaskForm";
 import TaskCard from "../components/Tasks/TaskCard";
@@ -38,7 +46,7 @@ const Home: FC = () => {
         due_date: "",
     });
     const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
-    const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+    const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -52,10 +60,8 @@ const Home: FC = () => {
     const fetchTasks = async () => {
         try {
             const response = await axios.get<Task[]>("/api/tasks");
-            // console.log("Fetched tasks:", response.data); // Debugging
             setTasks(response.data);
         } catch (error) {
-            console.error("Error fetching tasks:", error);
             toast({
                 title: "Error Fetching Tasks",
                 description: "Could not load tasks. Try again later.",
@@ -168,12 +174,19 @@ const Home: FC = () => {
         }
     };
 
-    const handleDeleteTask = async (taskId: number) => {
+    const confirmDeleteTask = (task: Task) => {
+        setTaskToDelete(task);
+        onOpen();
+    };
+
+    const handleDeleteTask = async () => {
+        if (!taskToDelete) return;
+
         try {
-            const response = await axios.delete(`/tasks/${taskId}`);
+            const response = await axios.delete(`/tasks/${taskToDelete.id}`);
             if (response.data.status === "success") {
                 setTasks((prevTasks) =>
-                    prevTasks.filter((task) => task.id !== taskId)
+                    prevTasks.filter((task) => task.id !== taskToDelete.id)
                 );
                 toast({
                     title: "Task Deleted",
@@ -199,37 +212,26 @@ const Home: FC = () => {
                 duration: 5000,
                 isClosable: true,
             });
+        } finally {
+            setTaskToDelete(null);
+            onClose();
         }
-    };
-
-    const handleEditButtonClick = (task: Task) => {
-        setEditingTask(task);
-    };
-
-    const openDeleteModal = (id: number) => {
-        setTaskToDelete(id);
-        onOpen();
     };
 
     const filteredTasks = tasks.filter((task) => {
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
-            const matchesSearch =
+            return (
                 task.name.toLowerCase().includes(query) ||
                 (task.category &&
                     task.category.toLowerCase().includes(query)) ||
                 (task.description &&
-                    task.description.toLowerCase().includes(query));
-            if (!matchesSearch) return false;
+                    task.description.toLowerCase().includes(query))
+            );
         }
-
-        if (filterStatus === "completed") return task.completed;
-        if (filterStatus === "pending") return !task.completed;
-
         return true;
     });
 
-    const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
     const paginatedTasks = filteredTasks.slice(
         (currentPage - 1) * tasksPerPage,
         currentPage * tasksPerPage
@@ -275,25 +277,54 @@ const Home: FC = () => {
                             <TaskCard
                                 key={task.id}
                                 task={task}
-                                onEdit={handleEditButtonClick}
-                                onDelete={handleDeleteTask}
+                                onEdit={setEditingTask}
+                                onDelete={() => confirmDeleteTask(task)}
                             />
                         ))}
                     </SimpleGrid>
                     <TaskPagination
                         currentPage={currentPage}
-                        totalPages={totalPages}
+                        totalPages={Math.ceil(
+                            filteredTasks.length / tasksPerPage
+                        )}
                         onPrevious={() =>
                             setCurrentPage((prev) => Math.max(1, prev - 1))
                         }
                         onNext={() =>
                             setCurrentPage((prev) =>
-                                Math.min(totalPages, prev + 1)
+                                Math.min(
+                                    Math.ceil(
+                                        filteredTasks.length / tasksPerPage
+                                    ),
+                                    prev + 1
+                                )
                             )
                         }
                     />
                 </Box>
             </Grid>
+
+            {/* Delete Confirmation Modal */}
+            <Modal isOpen={isOpen} onClose={onClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Confirm Delete</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        Are you sure you want to delete the task{" "}
+                        <strong>{taskToDelete?.name}</strong>? This action
+                        cannot be undone.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button colorScheme="red" onClick={handleDeleteTask}>
+                            Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onClose}>
+                            Cancel
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Container>
     );
 };
