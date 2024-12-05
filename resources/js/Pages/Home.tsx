@@ -61,7 +61,13 @@ const Home: FC = () => {
     const fetchTasks = async () => {
         try {
             const response = await axios.get<Task[]>("/api/tasks");
-            setTasks(response.data);
+            const formattedTasks = response.data.map((task) => ({
+                ...task,
+                due_date: task.due_date
+                    ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
+                    : "", // Format for datetime-local input
+            }));
+            setTasks(formattedTasks);
         } catch (error) {
             toast({
                 title: "Error Fetching Tasks",
@@ -79,22 +85,32 @@ const Home: FC = () => {
         const { name, value, type } = e.target as HTMLInputElement;
         const checked = (e.target as HTMLInputElement).checked;
 
+        const formattedValue =
+            name === "due_date" && type === "datetime-local" ? value : value;
+
         if (editingTask) {
             setEditingTask({
                 ...editingTask,
-                [name]: type === "checkbox" ? checked : value,
+                [name]: type === "checkbox" ? checked : formattedValue,
             });
         } else {
             setNewTask({
                 ...newTask,
-                [name]: type === "checkbox" ? checked : value,
+                [name]: type === "checkbox" ? checked : formattedValue,
             });
         }
     };
 
     const handleAddTask = async () => {
         try {
-            const response = await axios.post("/tasks", newTask);
+            const taskToSave = {
+                ...newTask,
+                due_date: newTask.due_date
+                    ? dayjs(newTask.due_date).toISOString()
+                    : null,
+            };
+
+            const response = await axios.post("/tasks", taskToSave);
             if (response.data.status === "success") {
                 setTasks([...tasks, response.data.task]);
                 setNewTask({
@@ -135,15 +151,25 @@ const Home: FC = () => {
         if (!editingTask || !editingTask.id) return;
 
         try {
+            const taskToSave = {
+                ...editingTask,
+                due_date: editingTask.due_date
+                    ? dayjs(editingTask.due_date).toISOString()
+                    : null,
+            };
+
             const response = await axios.put(
                 `/tasks/${editingTask.id}`,
-                editingTask
+                taskToSave
             );
             if (response.data.status === "success") {
                 setTasks((prevTasks) =>
                     prevTasks.map((task) =>
                         task.id === response.data.task.id
-                            ? response.data.task
+                            ? {
+                                  ...response.data.task,
+                                  due_date: taskToSave.due_date,
+                              }
                             : task
                     )
                 );
@@ -173,6 +199,16 @@ const Home: FC = () => {
                 isClosable: true,
             });
         }
+    };
+
+    const handleEditButtonClick = (task: Task) => {
+        const formattedTask = {
+            ...task,
+            due_date: task.due_date
+                ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
+                : "",
+        };
+        setEditingTask(formattedTask);
     };
 
     const confirmDeleteTask = (task: Task) => {
@@ -239,12 +275,12 @@ const Home: FC = () => {
         })
         .sort((a, b) => {
             const getPriority = (task: Task): number => {
-                if (task.completed) return 5; // Completed tasks have the lowest priority
-                if (!task.due_date) return 4; // No due date tasks are next
+                if (task.completed) return 5;
+                if (!task.due_date) return 4;
                 const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                if (hoursDiff <= 24) return 1; // Urgent tasks
-                if (hoursDiff <= 48) return 2; // Coming soon tasks
-                return 3; // Long term tasks
+                if (hoursDiff <= 24) return 1;
+                if (hoursDiff <= 48) return 2;
+                return 3;
             };
 
             const priorityA = getPriority(a);
@@ -252,12 +288,11 @@ const Home: FC = () => {
 
             if (priorityA !== priorityB) return priorityA - priorityB;
 
-            // Secondary sorting by due date (earlier comes first)
             if (a.due_date && b.due_date) {
                 return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
             }
 
-            return 0; // Fallback for equal priority
+            return 0;
         });
 
     const paginatedTasks = filteredTasks.slice(
@@ -267,7 +302,6 @@ const Home: FC = () => {
 
     return (
         <Container mt="10" maxW="container.xl">
-            {/* Header */}
             <Box textAlign="center" mb="10">
                 <Heading as="h1" size="2xl">
                     Welcome to Task Master Pro!
@@ -277,9 +311,7 @@ const Home: FC = () => {
                 </Text>
             </Box>
 
-            {/* Grid Layout */}
             <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap="6">
-                {/* Left Column: Form and Filters */}
                 <VStack spacing="6">
                     <TaskForm
                         task={editingTask || newTask}
@@ -295,7 +327,6 @@ const Home: FC = () => {
                     />
                 </VStack>
 
-                {/* Right Column: Task List */}
                 <Box>
                     <Heading as="h2" size="lg" mb="4">
                         Task List
@@ -305,7 +336,7 @@ const Home: FC = () => {
                             <TaskCard
                                 key={task.id}
                                 task={task}
-                                onEdit={setEditingTask}
+                                onEdit={handleEditButtonClick}
                                 onDelete={() => confirmDeleteTask(task)}
                             />
                         ))}
@@ -332,7 +363,6 @@ const Home: FC = () => {
                 </Box>
             </Grid>
 
-            {/* Delete Confirmation Modal */}
             <Modal isOpen={isOpen} onClose={onClose}>
                 <ModalOverlay />
                 <ModalContent>
