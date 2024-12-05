@@ -271,6 +271,23 @@ const Home: FC = () => {
             if (filterStatus === "completed") return task.completed;
             if (filterStatus === "pending") return !task.completed;
 
+            // Exclude completed tasks from these filters
+            if (task.completed) return false;
+
+            if (filterStatus === "urgent") {
+                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+                return task.due_date && hoursDiff <= 24;
+            }
+            if (filterStatus === "coming_soon") {
+                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+                return task.due_date && hoursDiff > 24 && hoursDiff <= 48;
+            }
+            if (filterStatus === "long_term") {
+                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+                return task.due_date && hoursDiff > 48;
+            }
+            if (filterStatus === "no_due_date") return !task.due_date;
+
             return true;
         })
         .sort((a, b) => {
