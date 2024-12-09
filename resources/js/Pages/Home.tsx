@@ -52,7 +52,16 @@ const Home: FC = () => {
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState<number>(1);
 
-    const { isOpen, onOpen, onClose } = useDisclosure();
+    const {
+        isOpen: isDeleteOpen,
+        onOpen: onDeleteOpen,
+        onClose: onDeleteClose,
+    } = useDisclosure();
+    const {
+        isOpen: isEditOpen,
+        onOpen: onEditOpen,
+        onClose: onEditClose,
+    } = useDisclosure();
 
     useEffect(() => {
         fetchTasks();
@@ -65,7 +74,7 @@ const Home: FC = () => {
                 ...task,
                 due_date: task.due_date
                     ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
-                    : "", // Format for datetime-local input
+                    : "",
             }));
             setTasks(formattedTasks);
         } catch (error) {
@@ -174,6 +183,7 @@ const Home: FC = () => {
                     )
                 );
                 setEditingTask(null);
+                onEditClose(); // Close the edit modal
                 toast({
                     title: "Task Updated",
                     description: response.data.message,
@@ -209,11 +219,12 @@ const Home: FC = () => {
                 : "",
         };
         setEditingTask(formattedTask);
+        onEditOpen(); // Open the edit modal
     };
 
     const confirmDeleteTask = (task: Task) => {
         setTaskToDelete(task);
-        onOpen();
+        onDeleteOpen();
     };
 
     const handleDeleteTask = async () => {
@@ -251,7 +262,7 @@ const Home: FC = () => {
             });
         } finally {
             setTaskToDelete(null);
-            onClose();
+            onDeleteClose();
         }
     };
 
@@ -259,42 +270,21 @@ const Home: FC = () => {
         .filter((task) => {
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
-                const matchesSearch =
+                return (
                     task.name.toLowerCase().includes(query) ||
-                    (task.category &&
-                        task.category.toLowerCase().includes(query)) ||
-                    (task.description &&
-                        task.description.toLowerCase().includes(query));
-                if (!matchesSearch) return false;
+                    task.description?.toLowerCase().includes(query)
+                );
             }
-
-            if (filterStatus === "completed") return task.completed;
-            if (filterStatus === "pending") return !task.completed;
-
-            if (filterStatus === "urgent") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return task.due_date && hoursDiff <= 24;
-            }
-            if (filterStatus === "coming_soon") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return task.due_date && hoursDiff > 24 && hoursDiff <= 48;
-            }
-            if (filterStatus === "long_term") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return task.due_date && hoursDiff > 48;
-            }
-            if (filterStatus === "no_due_date") return !task.due_date;
-
             return true;
         })
         .sort((a, b) => {
             const getPriority = (task: Task): number => {
-                if (task.completed) return 5;
-                if (!task.due_date) return 4;
+                if (task.completed) return 5; // Completed tasks have the lowest priority
+                if (!task.due_date) return 4; // Tasks with no due date
                 const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                if (hoursDiff <= 24) return 1;
-                if (hoursDiff <= 48) return 2;
-                return 3;
+                if (hoursDiff <= 24) return 1; // Urgent tasks
+                if (hoursDiff <= 48) return 2; // Coming soon tasks
+                return 3; // Long-term tasks
             };
 
             const priorityA = getPriority(a);
@@ -302,11 +292,12 @@ const Home: FC = () => {
 
             if (priorityA !== priorityB) return priorityA - priorityB;
 
+            // Secondary sorting by due date (earlier due dates first)
             if (a.due_date && b.due_date) {
                 return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
             }
 
-            return 0;
+            return 0; // Fallback for equal priorities
         });
 
     const paginatedTasks = filteredTasks.slice(
@@ -315,23 +306,17 @@ const Home: FC = () => {
     );
 
     return (
-        <Container mt="10" maxW="container.xl">
-            <Box textAlign="center" mb="10">
-                <Heading as="h1" size="2xl">
-                    Welcome to Task Master Pro!
-                </Heading>
-                <Text fontSize="lg" color="gray.600" mt="2">
-                    The ultimate task management app to keep you productive.
-                </Text>
+        <Container maxW="container.xl" py={10}>
+            <Box textAlign="center" mb={8}>
+                <Heading>Task Manager</Heading>
+                <Text>A better way to organize.</Text>
             </Box>
-
-            <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap="6">
-                <VStack spacing="6">
+            <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap={8}>
+                <VStack spacing={6}>
                     <TaskForm
-                        task={editingTask || newTask}
+                        task={newTask}
                         onInputChange={handleInputChange}
-                        onSave={editingTask ? handleEditTask : handleAddTask}
-                        onCancel={() => setEditingTask(null)}
+                        onSave={handleAddTask}
                     />
                     <TaskFilter
                         searchQuery={searchQuery}
@@ -340,17 +325,8 @@ const Home: FC = () => {
                         setFilterStatus={setFilterStatus}
                     />
                 </VStack>
-
                 <Box>
-                    <Heading
-                        as="h2"
-                        size="lg"
-                        mb="4"
-                        textAlign="center" // Center the title
-                    >
-                        Task List
-                    </Heading>
-                    <SimpleGrid columns={[1, null, 2]} spacing="6">
+                    <SimpleGrid columns={[1, null, 2]} spacing={6}>
                         {paginatedTasks.map((task) => (
                             <TaskCard
                                 key={task.id}
@@ -381,8 +357,24 @@ const Home: FC = () => {
                     />
                 </Box>
             </Grid>
-
-            <Modal isOpen={isOpen} onClose={onClose}>
+            {/* Edit Task Modal */}
+            <Modal isOpen={isEditOpen} onClose={onEditClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Edit Task</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <TaskForm
+                            task={editingTask || newTask}
+                            onInputChange={handleInputChange}
+                            onSave={handleEditTask}
+                            onCancel={onEditClose}
+                        />
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
+            {/* Delete Task Modal */}
+            <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
                 <ModalOverlay />
                 <ModalContent>
                     <ModalHeader>Confirm Delete</ModalHeader>
@@ -396,7 +388,7 @@ const Home: FC = () => {
                         <Button colorScheme="red" onClick={handleDeleteTask}>
                             Delete
                         </Button>
-                        <Button variant="ghost" onClick={onClose}>
+                        <Button variant="ghost" onClick={onDeleteClose}>
                             Cancel
                         </Button>
                     </ModalFooter>
