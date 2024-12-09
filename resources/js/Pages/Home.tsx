@@ -271,9 +271,6 @@ const Home: FC = () => {
             if (filterStatus === "completed") return task.completed;
             if (filterStatus === "pending") return !task.completed;
 
-            // Exclude completed tasks from these filters
-            if (task.completed) return false;
-
             if (filterStatus === "urgent") {
                 const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
                 return task.due_date && hoursDiff <= 24;
@@ -345,7 +342,12 @@ const Home: FC = () => {
                 </VStack>
 
                 <Box>
-                    <Heading as="h2" size="lg" mb="4">
+                    <Heading
+                        as="h2"
+                        size="lg"
+                        mb="4"
+                        textAlign="center" // Center the title
+                    >
                         Task List
                     </Heading>
                     <SimpleGrid columns={[1, null, 2]} spacing="6">
