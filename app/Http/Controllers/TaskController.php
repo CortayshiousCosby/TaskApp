@@ -67,24 +67,30 @@ class TaskController extends Controller
 
             $task->update($validated);
 
-            if (request()->expectsJson()) {
+            $pageMessage = PageMessage::success('Task updated successfully.');
+
+            if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Task updated successfully.',
                     'task' => $task,
+                    'pageMessage' => $pageMessage->toArray(),
                 ]);
             }
 
-            return redirect()->back()->with('pageMessage', PageMessage::success('Task updated successfully.'));
+            return redirect()->back()->with('pageMessage', $pageMessage);
         } catch (\Exception $e) {
-            if (request()->expectsJson()) {
+            $pageMessage = PageMessage::error('Failed to update task: ' . $e->getMessage());
+
+            if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Failed to update task: ' . $e->getMessage(),
+                    'message' => 'Failed to update task.',
+                    'pageMessage' => $pageMessage->toArray(),
                 ], 500);
             }
 
-            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to update task: ' . $e->getMessage()));
+            return redirect()->back()->with('pageMessage', $pageMessage);
         }
     }
 

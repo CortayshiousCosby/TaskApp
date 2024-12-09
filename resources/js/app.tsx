@@ -2,8 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { ChakraProvider, extendTheme } from "@chakra-ui/react";
 import { createInertiaApp } from "@inertiajs/react";
+import { ToastProvider } from "./contexts/ToastContext";
 
-// Define a custom theme if necessary
 const theme = extendTheme({
     colors: {
         primary: {
@@ -20,7 +20,9 @@ createInertiaApp({
     setup({ el, App, props }) {
         ReactDOM.createRoot(el).render(
             <ChakraProvider theme={theme}>
-                <App {...props} />
+                <ToastProvider>
+                    <App {...props} />
+                </ToastProvider>
             </ChakraProvider>
         );
     },

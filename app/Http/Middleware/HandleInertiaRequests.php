@@ -32,8 +32,8 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
-            // Share the flash message for use in PageMessage component
-            'pageMessage' => fn() => $request->session()->get('pageMessage'),
+            // Share the flash message for use in the PageMessage component
+            'pageMessage' => fn() => $request->session()->get('pageMessage', null),
         ]);
     }
 }

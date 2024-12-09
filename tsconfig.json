@@ -6,6 +6,9 @@
         "strict": true,
         "jsx": "react-jsx",
         "esModuleInterop": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "paths": {
+            "@contexts/*": ["./contexts/*"]
+        }
     }
 }

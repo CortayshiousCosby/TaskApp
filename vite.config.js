@@ -14,5 +14,6 @@ export default defineConfig({
         alias: {
             "@": "/resources/js", // Optional alias for cleaner imports
         },
+        extensions: [".js", ".ts", ".jsx", ".tsx", ".json"],
     },
 });

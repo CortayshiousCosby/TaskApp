@@ -15,21 +15,19 @@ interface PageMessageProps {
     message: string;
 }
 
-interface PageMessageComponentProps {
-    duration?: number; // Allow customization of message visibility duration
-}
-
-const PageMessage: FC<PageMessageComponentProps> = ({ duration = 5000 }) => {
-    const { pageMessage } = usePage<{ pageMessage?: PageMessageProps }>().props;
+const PageMessage: FC = () => {
+    const { pageMessage } = usePage<{ pageMessage?: PageMessageProps | null }>()
+        .props;
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
+        console.log("pageMessage from server:", pageMessage);
         if (pageMessage) {
             setIsVisible(true);
-            const timer = setTimeout(() => setIsVisible(false), duration);
-            return () => clearTimeout(timer);
+            const timer = setTimeout(() => setIsVisible(false), 5000); // Show for 5 seconds
+            return () => clearTimeout(timer); // Cleanup
         }
-    }, [pageMessage, duration]);
+    }, [pageMessage]);
 
     if (!isVisible || !pageMessage) {
         return null;
@@ -37,12 +35,7 @@ const PageMessage: FC<PageMessageComponentProps> = ({ duration = 5000 }) => {
 
     return (
         <Fade in={isVisible}>
-            <Alert
-                status={pageMessage.status}
-                mb={4}
-                role="alert"
-                aria-live="polite"
-            >
+            <Alert status={pageMessage.status} mb={4}>
                 <AlertIcon />
                 <Box>
                     <AlertDescription>{pageMessage.message}</AlertDescription>
