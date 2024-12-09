@@ -268,13 +268,72 @@ const Home: FC = () => {
 
     const filteredTasks = tasks
         .filter((task) => {
+            const query = searchQuery.toLowerCase();
+
+            // Combine Search Logic
             if (searchQuery) {
-                const query = searchQuery.toLowerCase();
+                const matchesName = task.name.toLowerCase().includes(query);
+                const matchesCategory = task.category
+                    ?.toLowerCase()
+                    .includes(query);
+                const matchesDescription = task.description
+                    ?.toLowerCase()
+                    .includes(query);
+
+                // Add search for time sensitivity states
+                const matchesState =
+                    (query === "urgent" &&
+                        !task.completed &&
+                        dayjs(task.due_date).diff(dayjs(), "hours") <= 24) ||
+                    (query === "coming soon" &&
+                        !task.completed &&
+                        dayjs(task.due_date).diff(dayjs(), "hours") > 24 &&
+                        dayjs(task.due_date).diff(dayjs(), "hours") <= 48) ||
+                    (query === "long term" &&
+                        !task.completed &&
+                        dayjs(task.due_date).diff(dayjs(), "hours") > 48) ||
+                    (query === "no due date" &&
+                        !task.completed &&
+                        !task.due_date) ||
+                    (query === "completed" && task.completed);
+
+                if (
+                    !(
+                        matchesName ||
+                        matchesCategory ||
+                        matchesDescription ||
+                        matchesState
+                    )
+                ) {
+                    return false;
+                }
+            }
+
+            // Dropdown Filter Logic
+            if (filterStatus === "completed") return task.completed;
+            if (filterStatus === "all") return true; // All tasks include everything
+            if (filterStatus === "pending") return !task.completed;
+            if (filterStatus === "urgent") {
+                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+                return !task.completed && task.due_date && hoursDiff <= 24;
+            }
+            if (filterStatus === "coming_soon") {
+                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
                 return (
-                    task.name.toLowerCase().includes(query) ||
-                    task.description?.toLowerCase().includes(query)
+                    !task.completed &&
+                    task.due_date &&
+                    hoursDiff > 24 &&
+                    hoursDiff <= 48
                 );
             }
+            if (filterStatus === "long_term") {
+                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+                return !task.completed && task.due_date && hoursDiff > 48;
+            }
+            if (filterStatus === "no_due_date")
+                return !task.completed && !task.due_date;
+
+            // Default: Show all tasks
             return true;
         })
         .sort((a, b) => {
@@ -299,7 +358,6 @@ const Home: FC = () => {
 
             return 0; // Fallback for equal priorities
         });
-
     const paginatedTasks = filteredTasks.slice(
         (currentPage - 1) * tasksPerPage,
         currentPage * tasksPerPage
