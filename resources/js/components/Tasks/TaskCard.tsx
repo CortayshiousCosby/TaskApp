@@ -12,7 +12,7 @@ interface TaskCardProps {
         due_date: string | null;
     };
     onEdit: (task: any) => void;
-    onDelete: (taskId: number) => void; // Expect taskId here
+    onDelete: (taskId: number) => void;
 }
 
 const TaskCard: FC<TaskCardProps> = ({ task, onEdit, onDelete }) => {
@@ -25,10 +25,22 @@ const TaskCard: FC<TaskCardProps> = ({ task, onEdit, onDelete }) => {
         return "yellow.100";
     };
 
+    const getTimeSensitivityLabel = (): string => {
+        if (task.completed) return "(Completed)";
+        if (!task.due_date) return "(No Due Date)";
+        const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+        if (hoursDiff <= 24) return "(Urgent)";
+        if (hoursDiff <= 48) return "(Coming Soon)";
+        return "(Long Term)";
+    };
+
     return (
         <Box bg={getTaskBgColor()} borderWidth="1px" p="6" borderRadius="lg">
             <Heading as="h3" size="md" mb="2">
-                {task.name}
+                {task.name}{" "}
+                <Text as="span" color="gray.500">
+                    {getTimeSensitivityLabel()}
+                </Text>
             </Heading>
             <Text>
                 <strong>Category:</strong> {task.category || "N/A"}
