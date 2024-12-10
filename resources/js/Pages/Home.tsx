@@ -48,6 +48,7 @@ const Home: FC = () => {
     });
     const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+    const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -73,8 +74,8 @@ const Home: FC = () => {
             const formattedTasks = response.data.map((task) => ({
                 ...task,
                 due_date: task.due_date
-                    ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
-                    : "",
+                    ? dayjs(task.due_date).toISOString()
+                    : null,
             }));
             setTasks(formattedTasks);
         } catch (error) {
@@ -110,6 +111,49 @@ const Home: FC = () => {
         }
     };
 
+    const toggleTaskSelection = (taskId: number) => {
+        setSelectedTasks((prevSelected) => {
+            const updated = new Set(prevSelected);
+            if (updated.has(taskId)) {
+                updated.delete(taskId);
+            } else {
+                updated.add(taskId);
+            }
+            return updated;
+        });
+    };
+
+    const handleDeleteSelectedTasks = async () => {
+        const taskIds = Array.from(selectedTasks);
+        try {
+            const response = await axios.post("/tasks/delete-multiple", {
+                ids: taskIds,
+            });
+            if (response.data.status === "success") {
+                setTasks((prevTasks) =>
+                    prevTasks.filter((task) => !selectedTasks.has(task.id))
+                );
+                setSelectedTasks(new Set());
+                toast({
+                    title: "Tasks Deleted",
+                    description: "Selected tasks have been deleted.",
+                    status: "success",
+                    duration: 5000,
+                    isClosable: true,
+                });
+            }
+        } catch (error) {
+            toast({
+                title: "Error Deleting Tasks",
+                description:
+                    "Could not delete selected tasks. Try again later.",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+            });
+        }
+    };
+
     const handleAddTask = async () => {
         try {
             const taskToSave = {
@@ -133,14 +177,6 @@ const Home: FC = () => {
                     title: "Task Added",
                     description: response.data.message,
                     status: "success",
-                    duration: 5000,
-                    isClosable: true,
-                });
-            } else {
-                toast({
-                    title: "Error Adding Task",
-                    description: response.data.message,
-                    status: "error",
                     duration: 5000,
                     isClosable: true,
                 });
@@ -183,19 +219,11 @@ const Home: FC = () => {
                     )
                 );
                 setEditingTask(null);
-                onEditClose(); // Close the edit modal
+                onEditClose();
                 toast({
                     title: "Task Updated",
                     description: response.data.message,
                     status: "success",
-                    duration: 5000,
-                    isClosable: true,
-                });
-            } else {
-                toast({
-                    title: "Error Updating Task",
-                    description: response.data.message,
-                    status: "error",
                     duration: 5000,
                     isClosable: true,
                 });
@@ -219,7 +247,7 @@ const Home: FC = () => {
                 : "",
         };
         setEditingTask(formattedTask);
-        onEditOpen(); // Open the edit modal
+        onEditOpen();
     };
 
     const confirmDeleteTask = (task: Task) => {
@@ -243,14 +271,6 @@ const Home: FC = () => {
                     duration: 5000,
                     isClosable: true,
                 });
-            } else {
-                toast({
-                    title: "Error Deleting Task",
-                    description: response.data.message,
-                    status: "error",
-                    duration: 5000,
-                    isClosable: true,
-                });
             }
         } catch (error) {
             toast({
@@ -266,198 +286,189 @@ const Home: FC = () => {
         }
     };
 
-    const filteredTasks = tasks
-        .filter((task) => {
-            const query = searchQuery.toLowerCase();
+    const filteredTasks = tasks.filter((task) => {
+        const now = dayjs();
+        const query = searchQuery.toLowerCase();
 
-            // Combine Search Logic
-            if (searchQuery) {
-                const matchesName = task.name.toLowerCase().includes(query);
-                const matchesCategory = task.category
-                    ?.toLowerCase()
-                    .includes(query);
-                const matchesDescription = task.description
-                    ?.toLowerCase()
-                    .includes(query);
-
-                // Add search for time sensitivity states
-                const matchesState =
-                    (query === "urgent" &&
-                        !task.completed &&
-                        dayjs(task.due_date).diff(dayjs(), "hours") <= 24) ||
-                    (query === "coming soon" &&
-                        !task.completed &&
-                        dayjs(task.due_date).diff(dayjs(), "hours") > 24 &&
-                        dayjs(task.due_date).diff(dayjs(), "hours") <= 48) ||
-                    (query === "long term" &&
-                        !task.completed &&
-                        dayjs(task.due_date).diff(dayjs(), "hours") > 48) ||
-                    (query === "no due date" &&
-                        !task.completed &&
-                        !task.due_date) ||
-                    (query === "completed" && task.completed);
-
-                if (
-                    !(
-                        matchesName ||
-                        matchesCategory ||
-                        matchesDescription ||
-                        matchesState
-                    )
-                ) {
-                    return false;
-                }
+        // Combine Search Logic
+        if (searchQuery) {
+            const matchesName = task.name.toLowerCase().includes(query);
+            const matchesCategory = task.category
+                ?.toLowerCase()
+                .includes(query);
+            const matchesDescription = task.description
+                ?.toLowerCase()
+                .includes(query);
+            if (!(matchesName || matchesCategory || matchesDescription)) {
+                return false;
             }
+        }
 
-            // Dropdown Filter Logic
-            if (filterStatus === "completed") return task.completed;
-            if (filterStatus === "all") return true; // All tasks include everything
-            if (filterStatus === "pending") return !task.completed;
-            if (filterStatus === "urgent") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return !task.completed && task.due_date && hoursDiff <= 24;
-            }
-            if (filterStatus === "coming_soon") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return (
-                    !task.completed &&
-                    task.due_date &&
-                    hoursDiff > 24 &&
-                    hoursDiff <= 48
-                );
-            }
-            if (filterStatus === "long_term") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return !task.completed && task.due_date && hoursDiff > 48;
-            }
-            if (filterStatus === "no_due_date")
-                return !task.completed && !task.due_date;
+        // Dropdown Filter Logic
+        if (filterStatus === "completed") return task.completed;
+        if (filterStatus === "pending") return !task.completed;
+        if (filterStatus === "urgent") {
+            return (
+                !task.completed &&
+                task.due_date &&
+                dayjs(task.due_date).isBefore(now.add(24, "hour"))
+            );
+        }
+        if (filterStatus === "coming_soon") {
+            return (
+                !task.completed &&
+                task.due_date &&
+                dayjs(task.due_date).isAfter(now.add(24, "hour")) &&
+                dayjs(task.due_date).isBefore(now.add(48, "hour"))
+            );
+        }
+        if (filterStatus === "long_term") {
+            return (
+                !task.completed &&
+                task.due_date &&
+                dayjs(task.due_date).isAfter(now.add(48, "hour"))
+            );
+        }
+        if (filterStatus === "no_due_date") {
+            return (
+                !task.completed &&
+                (!task.due_date || !dayjs(task.due_date).isValid())
+            );
+        }
 
-            // Default: Show all tasks
-            return true;
-        })
-        .sort((a, b) => {
-            const getPriority = (task: Task): number => {
-                if (task.completed) return 5; // Completed tasks have the lowest priority
-                if (!task.due_date) return 4; // Tasks with no due date
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                if (hoursDiff <= 24) return 1; // Urgent tasks
-                if (hoursDiff <= 48) return 2; // Coming soon tasks
-                return 3; // Long-term tasks
-            };
+        return true; // Default: Show all tasks
+    });
 
-            const priorityA = getPriority(a);
-            const priorityB = getPriority(b);
+    const sortedTasks = filteredTasks.sort((a, b) => {
+        const now = dayjs();
 
-            if (priorityA !== priorityB) return priorityA - priorityB;
+        const getPriority = (task: Task): number => {
+            if (task.completed) return 5; // Lowest priority for completed tasks
+            if (!task.due_date) return 4; // No due date
+            const dueDate = dayjs(task.due_date);
+            if (dueDate.isBefore(now.add(24, "hour"))) return 1; // Urgent
+            if (dueDate.isBefore(now.add(48, "hour"))) return 2; // Coming soon
+            return 3; // Long-term
+        };
 
-            // Secondary sorting by due date (earlier due dates first)
-            if (a.due_date && b.due_date) {
-                return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
-            }
+        const priorityA = getPriority(a);
+        const priorityB = getPriority(b);
 
-            return 0; // Fallback for equal priorities
-        });
-    const paginatedTasks = filteredTasks.slice(
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB; // Sort by priority
+        }
+
+        // Secondary sorting by due date (earliest due date first)
+        if (a.due_date && b.due_date) {
+            return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
+        }
+
+        return 0; // Fallback for equal priorities
+    });
+
+    const paginatedTasks = sortedTasks.slice(
         (currentPage - 1) * tasksPerPage,
         currentPage * tasksPerPage
     );
 
     return (
-        <Box transform="scale(0.95)" transformOrigin="top" w="100%">
-            <Container maxW="container.xl" py={10}>
-                <Box textAlign="center" mb={8}>
-                    <Heading>Task Manager</Heading>
-                    <Text>A better way to organize.</Text>
-                </Box>
-                <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap={8}>
-                    <VStack spacing={6}>
-                        <TaskForm
-                            task={newTask}
-                            onInputChange={handleInputChange}
-                            onSave={handleAddTask}
-                        />
-                        <TaskFilter
-                            searchQuery={searchQuery}
-                            setSearchQuery={setSearchQuery}
-                            filterStatus={filterStatus}
-                            setFilterStatus={setFilterStatus}
-                        />
-                    </VStack>
-                    <Box>
-                        <SimpleGrid columns={[1, null, 2]} spacing={6}>
-                            {paginatedTasks.map((task) => (
-                                <TaskCard
-                                    key={task.id}
-                                    task={task}
-                                    onEdit={handleEditButtonClick}
-                                    onDelete={() => confirmDeleteTask(task)}
-                                />
-                            ))}
-                        </SimpleGrid>
-                        <TaskPagination
-                            currentPage={currentPage}
-                            totalPages={Math.ceil(
-                                filteredTasks.length / tasksPerPage
-                            )}
-                            onPrevious={() =>
-                                setCurrentPage((prev) => Math.max(1, prev - 1))
-                            }
-                            onNext={() =>
-                                setCurrentPage((prev) =>
-                                    Math.min(
-                                        Math.ceil(
-                                            filteredTasks.length / tasksPerPage
-                                        ),
-                                        prev + 1
-                                    )
-                                )
-                            }
-                        />
-                    </Box>
-                </Grid>
-                {/* Edit Task Modal */}
-                <Modal isOpen={isEditOpen} onClose={onEditClose}>
-                    <ModalOverlay />
-                    <ModalContent>
-                        <ModalHeader>Edit Task</ModalHeader>
-                        <ModalCloseButton />
-                        <ModalBody>
-                            <TaskForm
-                                task={editingTask || newTask}
-                                onInputChange={handleInputChange}
-                                onSave={handleEditTask}
-                                onCancel={onEditClose}
+        <Container maxW="container.xl" py={10}>
+            <Box textAlign="center" mb={8}>
+                <Heading>Task Manager</Heading>
+                <Text>A better way to organize.</Text>
+            </Box>
+            <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap={8}>
+                <VStack spacing={6}>
+                    <TaskForm
+                        task={newTask}
+                        onInputChange={handleInputChange}
+                        onSave={handleAddTask}
+                    />
+                    <TaskFilter
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        filterStatus={filterStatus}
+                        setFilterStatus={setFilterStatus}
+                    />
+                </VStack>
+                <Box>
+                    <Button
+                        colorScheme="red"
+                        onClick={handleDeleteSelectedTasks}
+                        isDisabled={selectedTasks.size === 0}
+                        mb={4}
+                    >
+                        Delete Selected
+                    </Button>
+                    <SimpleGrid columns={[1, null, 2]} spacing={6}>
+                        {paginatedTasks.map((task) => (
+                            <TaskCard
+                                key={task.id}
+                                task={task}
+                                onEdit={handleEditButtonClick}
+                                onDelete={() => confirmDeleteTask(task)}
+                                isSelected={selectedTasks.has(task.id)}
+                                onSelect={() => toggleTaskSelection(task.id)}
                             />
-                        </ModalBody>
-                    </ModalContent>
-                </Modal>
-                {/* Delete Task Modal */}
-                <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
-                    <ModalOverlay />
-                    <ModalContent>
-                        <ModalHeader>Confirm Delete</ModalHeader>
-                        <ModalCloseButton />
-                        <ModalBody>
-                            Are you sure you want to delete the task{" "}
-                            <strong>{taskToDelete?.name}</strong>? This action
-                            cannot be undone.
-                        </ModalBody>
-                        <ModalFooter>
-                            <Button
-                                colorScheme="red"
-                                onClick={handleDeleteTask}
-                            >
-                                Delete
-                            </Button>
-                            <Button variant="ghost" onClick={onDeleteClose}>
-                                Cancel
-                            </Button>
-                        </ModalFooter>
-                    </ModalContent>
-                </Modal>
-            </Container>
-        </Box>
+                        ))}
+                    </SimpleGrid>
+                    <TaskPagination
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(
+                            sortedTasks.length / tasksPerPage
+                        )}
+                        onPrevious={() =>
+                            setCurrentPage((prev) => Math.max(1, prev - 1))
+                        }
+                        onNext={() =>
+                            setCurrentPage((prev) =>
+                                Math.min(
+                                    Math.ceil(
+                                        sortedTasks.length / tasksPerPage
+                                    ),
+                                    prev + 1
+                                )
+                            )
+                        }
+                    />
+                </Box>
+            </Grid>
+            <Modal isOpen={isEditOpen} onClose={onEditClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Edit Task</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <TaskForm
+                            task={editingTask || newTask}
+                            onInputChange={handleInputChange}
+                            onSave={handleEditTask}
+                            onCancel={onEditClose}
+                        />
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
+            <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Confirm Delete</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        Are you sure you want to delete the task{" "}
+                        <strong>{taskToDelete?.name}</strong>? This action
+                        cannot be undone.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button colorScheme="red" onClick={handleDeleteTask}>
+                            Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onDeleteClose}>
+                            Cancel
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+        </Container>
     );
 };
 
