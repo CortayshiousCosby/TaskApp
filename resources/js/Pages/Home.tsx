@@ -364,95 +364,100 @@ const Home: FC = () => {
     );
 
     return (
-        <Container maxW="container.xl" py={10}>
-            <Box textAlign="center" mb={8}>
-                <Heading>Task Manager</Heading>
-                <Text>A better way to organize.</Text>
-            </Box>
-            <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap={8}>
-                <VStack spacing={6}>
-                    <TaskForm
-                        task={newTask}
-                        onInputChange={handleInputChange}
-                        onSave={handleAddTask}
-                    />
-                    <TaskFilter
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        filterStatus={filterStatus}
-                        setFilterStatus={setFilterStatus}
-                    />
-                </VStack>
-                <Box>
-                    <SimpleGrid columns={[1, null, 2]} spacing={6}>
-                        {paginatedTasks.map((task) => (
-                            <TaskCard
-                                key={task.id}
-                                task={task}
-                                onEdit={handleEditButtonClick}
-                                onDelete={() => confirmDeleteTask(task)}
-                            />
-                        ))}
-                    </SimpleGrid>
-                    <TaskPagination
-                        currentPage={currentPage}
-                        totalPages={Math.ceil(
-                            filteredTasks.length / tasksPerPage
-                        )}
-                        onPrevious={() =>
-                            setCurrentPage((prev) => Math.max(1, prev - 1))
-                        }
-                        onNext={() =>
-                            setCurrentPage((prev) =>
-                                Math.min(
-                                    Math.ceil(
-                                        filteredTasks.length / tasksPerPage
-                                    ),
-                                    prev + 1
-                                )
-                            )
-                        }
-                    />
+        <Box transform="scale(0.95)" transformOrigin="top" w="100%">
+            <Container maxW="container.xl" py={10}>
+                <Box textAlign="center" mb={8}>
+                    <Heading>Task Manager</Heading>
+                    <Text>A better way to organize.</Text>
                 </Box>
-            </Grid>
-            {/* Edit Task Modal */}
-            <Modal isOpen={isEditOpen} onClose={onEditClose}>
-                <ModalOverlay />
-                <ModalContent>
-                    <ModalHeader>Edit Task</ModalHeader>
-                    <ModalCloseButton />
-                    <ModalBody>
+                <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap={8}>
+                    <VStack spacing={6}>
                         <TaskForm
-                            task={editingTask || newTask}
+                            task={newTask}
                             onInputChange={handleInputChange}
-                            onSave={handleEditTask}
-                            onCancel={onEditClose}
+                            onSave={handleAddTask}
                         />
-                    </ModalBody>
-                </ModalContent>
-            </Modal>
-            {/* Delete Task Modal */}
-            <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
-                <ModalOverlay />
-                <ModalContent>
-                    <ModalHeader>Confirm Delete</ModalHeader>
-                    <ModalCloseButton />
-                    <ModalBody>
-                        Are you sure you want to delete the task{" "}
-                        <strong>{taskToDelete?.name}</strong>? This action
-                        cannot be undone.
-                    </ModalBody>
-                    <ModalFooter>
-                        <Button colorScheme="red" onClick={handleDeleteTask}>
-                            Delete
-                        </Button>
-                        <Button variant="ghost" onClick={onDeleteClose}>
-                            Cancel
-                        </Button>
-                    </ModalFooter>
-                </ModalContent>
-            </Modal>
-        </Container>
+                        <TaskFilter
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            filterStatus={filterStatus}
+                            setFilterStatus={setFilterStatus}
+                        />
+                    </VStack>
+                    <Box>
+                        <SimpleGrid columns={[1, null, 2]} spacing={6}>
+                            {paginatedTasks.map((task) => (
+                                <TaskCard
+                                    key={task.id}
+                                    task={task}
+                                    onEdit={handleEditButtonClick}
+                                    onDelete={() => confirmDeleteTask(task)}
+                                />
+                            ))}
+                        </SimpleGrid>
+                        <TaskPagination
+                            currentPage={currentPage}
+                            totalPages={Math.ceil(
+                                filteredTasks.length / tasksPerPage
+                            )}
+                            onPrevious={() =>
+                                setCurrentPage((prev) => Math.max(1, prev - 1))
+                            }
+                            onNext={() =>
+                                setCurrentPage((prev) =>
+                                    Math.min(
+                                        Math.ceil(
+                                            filteredTasks.length / tasksPerPage
+                                        ),
+                                        prev + 1
+                                    )
+                                )
+                            }
+                        />
+                    </Box>
+                </Grid>
+                {/* Edit Task Modal */}
+                <Modal isOpen={isEditOpen} onClose={onEditClose}>
+                    <ModalOverlay />
+                    <ModalContent>
+                        <ModalHeader>Edit Task</ModalHeader>
+                        <ModalCloseButton />
+                        <ModalBody>
+                            <TaskForm
+                                task={editingTask || newTask}
+                                onInputChange={handleInputChange}
+                                onSave={handleEditTask}
+                                onCancel={onEditClose}
+                            />
+                        </ModalBody>
+                    </ModalContent>
+                </Modal>
+                {/* Delete Task Modal */}
+                <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+                    <ModalOverlay />
+                    <ModalContent>
+                        <ModalHeader>Confirm Delete</ModalHeader>
+                        <ModalCloseButton />
+                        <ModalBody>
+                            Are you sure you want to delete the task{" "}
+                            <strong>{taskToDelete?.name}</strong>? This action
+                            cannot be undone.
+                        </ModalBody>
+                        <ModalFooter>
+                            <Button
+                                colorScheme="red"
+                                onClick={handleDeleteTask}
+                            >
+                                Delete
+                            </Button>
+                            <Button variant="ghost" onClick={onDeleteClose}>
+                                Cancel
+                            </Button>
+                        </ModalFooter>
+                    </ModalContent>
+                </Modal>
+            </Container>
+        </Box>
     );
 };
 
