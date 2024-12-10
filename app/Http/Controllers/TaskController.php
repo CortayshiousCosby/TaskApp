@@ -118,4 +118,38 @@ class TaskController extends Controller
             return redirect()->back()->with('pageMessage', PageMessage::error('Failed to delete task: ' . $e->getMessage()));
         }
     }
+
+    public function deleteMultiple(Request $request)
+    {
+        \Log::debug($request->toArray());
+
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:tasks,id',
+        ]);
+
+        try {
+
+
+            Task::whereIn('id', $validated['ids'])->delete();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Selected tasks deleted successfully.',
+                ]);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::success('Selected tasks deleted successfully.'));
+        } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to delete selected tasks: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to delete selected tasks: ' . $e->getMessage()));
+        }
+    }
 }

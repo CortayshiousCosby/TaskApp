@@ -126,8 +126,10 @@ const Home: FC = () => {
     const handleDeleteSelectedTasks = async () => {
         const taskIds = Array.from(selectedTasks);
         try {
-            const response = await axios.post("/tasks/delete-multiple", {
-                ids: taskIds,
+            const response = await axios.delete("/api/tasks/delete-multiple", {
+                params: {
+                    ids: taskIds,
+                },
             });
             if (response.data.status === "success") {
                 setTasks((prevTasks) =>
