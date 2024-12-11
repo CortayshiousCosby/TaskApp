@@ -13,11 +13,6 @@ import {
     ModalBody,
     ModalFooter,
     SimpleGrid,
-    // Tabs,
-    // TabList,
-    // TabPanels,
-    // Tab,
-    // TabPanel,
     Text,
     useDisclosure,
     useToast,
@@ -133,6 +128,18 @@ const Home: FC = () => {
         });
     };
 
+    const handleSelectAll = () => {
+        const allTaskIds = tasks.map((task) => task.id);
+        setSelectedTasks(new Set(allTaskIds));
+        toast({
+            title: "All Tasks Selected",
+            description: "All tasks have been selected.",
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+        });
+    };
+
     const handleUnselectAll = () => {
         setSelectedTasks(new Set());
         toast({
@@ -215,6 +222,17 @@ const Home: FC = () => {
         }
     };
 
+    const handleEditButtonClick = (task: Task) => {
+        const formattedTask = {
+            ...task,
+            due_date: task.due_date
+                ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
+                : "",
+        };
+        setEditingTask(formattedTask);
+        onEditOpen();
+    };
+
     const handleEditTask = async () => {
         if (!editingTask || !editingTask.id) return;
 
@@ -260,17 +278,6 @@ const Home: FC = () => {
                 isClosable: true,
             });
         }
-    };
-
-    const handleEditButtonClick = (task: Task) => {
-        const formattedTask = {
-            ...task,
-            due_date: task.due_date
-                ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
-                : "",
-        };
-        setEditingTask(formattedTask);
-        onEditOpen();
     };
 
     const confirmDeleteTask = (task: Task) => {
@@ -412,6 +419,14 @@ const Home: FC = () => {
                     />
                 </VStack>
                 <Box>
+                    <Button
+                        colorScheme="teal"
+                        onClick={handleSelectAll}
+                        mb={2}
+                        isDisabled={tasks.length === 0}
+                    >
+                        Select All
+                    </Button>
                     <Button
                         colorScheme="red"
                         onClick={onDeleteSelectedOpen}
