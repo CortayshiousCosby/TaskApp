@@ -1,14 +1,10 @@
 import React, { FC, useState, useEffect } from "react";
 import {
     Box,
+    Button,
     Container,
     Grid,
-    VStack,
     Heading,
-    Text,
-    useDisclosure,
-    useToast,
-    SimpleGrid,
     Modal,
     ModalOverlay,
     ModalContent,
@@ -16,7 +12,16 @@ import {
     ModalCloseButton,
     ModalBody,
     ModalFooter,
-    Button,
+    SimpleGrid,
+    // Tabs,
+    // TabList,
+    // TabPanels,
+    // Tab,
+    // TabPanel,
+    Text,
+    useDisclosure,
+    useToast,
+    VStack,
 } from "@chakra-ui/react";
 import TaskForm from "../components/Tasks/TaskForm";
 import TaskCard from "../components/Tasks/TaskCard";
