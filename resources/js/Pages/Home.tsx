@@ -63,6 +63,11 @@ const Home: FC = () => {
         onOpen: onEditOpen,
         onClose: onEditClose,
     } = useDisclosure();
+    const {
+        isOpen: isDeleteSelectedOpen,
+        onOpen: onDeleteSelectedOpen,
+        onClose: onDeleteSelectedClose,
+    } = useDisclosure();
 
     useEffect(() => {
         fetchTasks();
@@ -123,13 +128,22 @@ const Home: FC = () => {
         });
     };
 
+    const handleUnselectAll = () => {
+        setSelectedTasks(new Set());
+        toast({
+            title: "Selections Cleared",
+            description: "All selected tasks have been unselected.",
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+        });
+    };
+
     const handleDeleteSelectedTasks = async () => {
         const taskIds = Array.from(selectedTasks);
         try {
             const response = await axios.delete("/api/tasks/delete-multiple", {
-                params: {
-                    ids: taskIds,
-                },
+                params: { ids: taskIds },
             });
             if (response.data.status === "success") {
                 setTasks((prevTasks) =>
@@ -153,6 +167,8 @@ const Home: FC = () => {
                 duration: 5000,
                 isClosable: true,
             });
+        } finally {
+            onDeleteSelectedClose();
         }
     };
 
@@ -292,7 +308,6 @@ const Home: FC = () => {
         const now = dayjs();
         const query = searchQuery.toLowerCase();
 
-        // Combine Search Logic
         if (searchQuery) {
             const matchesName = task.name.toLowerCase().includes(query);
             const matchesCategory = task.category
@@ -306,7 +321,6 @@ const Home: FC = () => {
             }
         }
 
-        // Dropdown Filter Logic
         if (filterStatus === "completed") return task.completed;
         if (filterStatus === "pending") return !task.completed;
         if (filterStatus === "urgent") {
@@ -338,34 +352,33 @@ const Home: FC = () => {
             );
         }
 
-        return true; // Default: Show all tasks
+        return true;
     });
 
     const sortedTasks = filteredTasks.sort((a, b) => {
         const now = dayjs();
 
         const getPriority = (task: Task): number => {
-            if (task.completed) return 5; // Lowest priority for completed tasks
-            if (!task.due_date) return 4; // No due date
+            if (task.completed) return 5;
+            if (!task.due_date) return 4;
             const dueDate = dayjs(task.due_date);
-            if (dueDate.isBefore(now.add(24, "hour"))) return 1; // Urgent
-            if (dueDate.isBefore(now.add(48, "hour"))) return 2; // Coming soon
-            return 3; // Long-term
+            if (dueDate.isBefore(now.add(24, "hour"))) return 1;
+            if (dueDate.isBefore(now.add(48, "hour"))) return 2;
+            return 3;
         };
 
         const priorityA = getPriority(a);
         const priorityB = getPriority(b);
 
         if (priorityA !== priorityB) {
-            return priorityA - priorityB; // Sort by priority
+            return priorityA - priorityB;
         }
 
-        // Secondary sorting by due date (earliest due date first)
         if (a.due_date && b.due_date) {
             return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
         }
 
-        return 0; // Fallback for equal priorities
+        return 0;
     });
 
     const paginatedTasks = sortedTasks.slice(
@@ -396,11 +409,19 @@ const Home: FC = () => {
                 <Box>
                     <Button
                         colorScheme="red"
-                        onClick={handleDeleteSelectedTasks}
+                        onClick={onDeleteSelectedOpen}
+                        isDisabled={selectedTasks.size === 0}
+                        mb={2}
+                    >
+                        Delete Selected
+                    </Button>
+                    <Button
+                        colorScheme="gray"
+                        onClick={handleUnselectAll}
                         isDisabled={selectedTasks.size === 0}
                         mb={4}
                     >
-                        Delete Selected
+                        Unselect All
                     </Button>
                     <SimpleGrid columns={[1, null, 2]} spacing={6}>
                         {paginatedTasks.map((task) => (
@@ -465,6 +486,31 @@ const Home: FC = () => {
                             Delete
                         </Button>
                         <Button variant="ghost" onClick={onDeleteClose}>
+                            Cancel
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+            <Modal
+                isOpen={isDeleteSelectedOpen}
+                onClose={onDeleteSelectedClose}
+            >
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Confirm Delete Selected</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        Are you sure you want to delete the selected tasks? This
+                        action cannot be undone.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button
+                            colorScheme="red"
+                            onClick={handleDeleteSelectedTasks}
+                        >
+                            Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onDeleteSelectedClose}>
                             Cancel
                         </Button>
                     </ModalFooter>
