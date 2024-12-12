@@ -121,7 +121,7 @@ class TaskController extends Controller
 
     public function deleteMultiple(Request $request)
     {
-        \Log::debug($request->toArray());
+        // \Log::debug($request->toArray());
 
         $validated = $request->validate([
             'ids' => 'required|array',
