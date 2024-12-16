@@ -10,49 +10,67 @@ class TaskSeeder extends Seeder
 {
     public function run()
     {
-        // Urgent task (due within 24 hours)
+        // Task in the 'Work' category
         Task::create([
-            'name' => 'Urgent Task',
-            'category' => 'High Priority',
-            'description' => 'This task needs immediate attention.',
+            'name' => 'Team Meeting Preparation',
+            'category' => 'Work',
+            'description' => 'Prepare slides and agenda for the team meeting.',
             'completed' => false,
-            'due_date' => Carbon::now()->addHours(10), // Due within 10 hours
+            'due_date' => Carbon::now()->addHours(8), // Due in 8 hours
         ]);
 
-        // Coming soon task (due in 1-2 days)
+        // Task in the 'Personal' category
         Task::create([
-            'name' => 'Coming Soon Task',
-            'category' => 'Upcoming',
-            'description' => 'This task is coming up soon.',
+            'name' => 'Buy Groceries',
+            'category' => 'Personal',
+            'description' => 'Purchase groceries for the week.',
             'completed' => false,
-            'due_date' => Carbon::now()->addHours(36), // Due in 36 hours
+            'due_date' => Carbon::now()->addDays(1), // Due tomorrow
         ]);
 
-        // Long-term task (due in more than 2 days)
+        // Task in the 'Errands' category
         Task::create([
-            'name' => 'Long-Term Task',
-            'category' => 'Planning',
-            'description' => 'This task is planned for the future.',
+            'name' => 'Post Office Visit',
+            'category' => 'Errands',
+            'description' => 'Drop off packages at the post office.',
             'completed' => false,
-            'due_date' => Carbon::now()->addDays(7), // Due in 7 days
+            'due_date' => Carbon::now()->addHours(30), // Due in 30 hours
         ]);
 
-        // No due date task
+        // Task in the 'Hobbies' category
         Task::create([
-            'name' => 'No Due Date Task',
-            'category' => 'Flexible',
-            'description' => 'This task has no specific deadline.',
+            'name' => 'Painting Class',
+            'category' => 'Hobbies',
+            'description' => 'Attend painting class at the community center.',
+            'completed' => false,
+            'due_date' => Carbon::now()->addDays(3), // Due in 3 days
+        ]);
+
+        // A long-term task in the 'Work' category
+        Task::create([
+            'name' => 'Project Deadline',
+            'category' => 'Work',
+            'description' => 'Complete the project and submit it to the client.',
+            'completed' => false,
+            'due_date' => Carbon::now()->addWeeks(1), // Due in 7 days
+        ]);
+
+        // A completed task in the 'Personal' category
+        Task::create([
+            'name' => 'Morning Run',
+            'category' => 'Personal',
+            'description' => 'Go for a 5km run in the park.',
+            'completed' => true,
+            'due_date' => Carbon::now()->subDays(1), // Completed yesterday
+        ]);
+
+        // A task with no due date in the 'Hobbies' category
+        Task::create([
+            'name' => 'Learn Guitar',
+            'category' => 'Hobbies',
+            'description' => 'Practice guitar chords and scales.',
             'completed' => false,
             'due_date' => null, // No due date
-        ]);
-
-        // Completed task
-        Task::create([
-            'name' => 'Completed Task',
-            'category' => 'Finished',
-            'description' => 'This task has been completed.',
-            'completed' => true,
-            'due_date' => Carbon::now()->subDays(1), // Completed task with a past due date
         ]);
     }
 }
