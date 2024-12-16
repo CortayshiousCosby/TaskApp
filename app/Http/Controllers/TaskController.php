@@ -17,7 +17,10 @@ class TaskController extends Controller
             return response()->json($tasks);
         }
 
-        return Inertia::render('Tasks/Index', ['tasks' => $tasks]);
+        return Inertia::render('Tasks/Index', [
+            'tasks' => Task::all(),
+            'categories' => Task::CATEGORIES,
+        ]);
     }
 
     public function store(Request $request)
@@ -25,7 +28,7 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'category' => 'nullable|string|max:255',
+                'category' => 'required|in:Work,Personal,Errands,Hobbies',
                 'description' => 'nullable|string',
                 'completed' => 'boolean',
                 'due_date' => 'nullable|date',
@@ -59,7 +62,7 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'category' => 'nullable|string|max:255',
+                'category' => 'required|in:Work,Personal,Errands,Hobbies',
                 'description' => 'nullable|string',
                 'completed' => 'boolean',
                 'due_date' => 'nullable|date',
@@ -116,6 +119,40 @@ class TaskController extends Controller
             }
 
             return redirect()->back()->with('pageMessage', PageMessage::error('Failed to delete task: ' . $e->getMessage()));
+        }
+    }
+
+    public function deleteMultiple(Request $request)
+    {
+        // \Log::debug($request->toArray());
+
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:tasks,id',
+        ]);
+
+        try {
+
+
+            Task::whereIn('id', $validated['ids'])->delete();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Selected tasks deleted successfully.',
+                ]);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::success('Selected tasks deleted successfully.'));
+        } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to delete selected tasks: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('pageMessage', PageMessage::error('Failed to delete selected tasks: ' . $e->getMessage()));
         }
     }
 }

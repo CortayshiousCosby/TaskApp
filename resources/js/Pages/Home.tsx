@@ -1,14 +1,10 @@
 import React, { FC, useState, useEffect } from "react";
 import {
     Box,
+    Button,
     Container,
     Grid,
-    VStack,
     Heading,
-    Text,
-    useDisclosure,
-    useToast,
-    SimpleGrid,
     Modal,
     ModalOverlay,
     ModalContent,
@@ -16,23 +12,20 @@ import {
     ModalCloseButton,
     ModalBody,
     ModalFooter,
-    Button,
+    SimpleGrid,
+    Text,
+    useDisclosure,
+    useToast,
+    VStack,
 } from "@chakra-ui/react";
 import TaskForm from "../components/Tasks/TaskForm";
 import TaskCard from "../components/Tasks/TaskCard";
 import TaskFilter from "../components/Tasks/TaskFilter";
 import TaskPagination from "../components/Tasks/TaskPagination";
+import TaskModals from "../components/Tasks/TaskModals";
+import { Task } from "../components/Tasks/types";
 import axios from "axios";
 import dayjs from "dayjs";
-
-interface Task {
-    id: number;
-    name: string;
-    category: string;
-    description?: string;
-    completed: boolean;
-    due_date: string | null;
-}
 
 const tasksPerPage = 6;
 
@@ -48,11 +41,26 @@ const Home: FC = () => {
     });
     const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+    const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState<number>(1);
 
-    const { isOpen, onOpen, onClose } = useDisclosure();
+    const {
+        isOpen: isDeleteOpen,
+        onOpen: onDeleteOpen,
+        onClose: onDeleteClose,
+    } = useDisclosure();
+    const {
+        isOpen: isEditOpen,
+        onOpen: onEditOpen,
+        onClose: onEditClose,
+    } = useDisclosure();
+    const {
+        isOpen: isDeleteSelectedOpen,
+        onOpen: onDeleteSelectedOpen,
+        onClose: onDeleteSelectedClose,
+    } = useDisclosure();
 
     useEffect(() => {
         fetchTasks();
@@ -64,8 +72,8 @@ const Home: FC = () => {
             const formattedTasks = response.data.map((task) => ({
                 ...task,
                 due_date: task.due_date
-                    ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
-                    : "", // Format for datetime-local input
+                    ? dayjs(task.due_date).toISOString()
+                    : null,
             }));
             setTasks(formattedTasks);
         } catch (error) {
@@ -80,9 +88,13 @@ const Home: FC = () => {
     };
 
     const handleInputChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+        >
     ) => {
-        const { name, value, type } = e.target as HTMLInputElement;
+        const { name, value, type } = e.target as
+            | HTMLInputElement
+            | HTMLSelectElement;
         const checked = (e.target as HTMLInputElement).checked;
 
         const formattedValue =
@@ -98,6 +110,74 @@ const Home: FC = () => {
                 ...newTask,
                 [name]: type === "checkbox" ? checked : formattedValue,
             });
+        }
+    };
+
+    const toggleTaskSelection = (taskId: number) => {
+        setSelectedTasks((prevSelected) => {
+            const updated = new Set(prevSelected);
+            if (updated.has(taskId)) {
+                updated.delete(taskId);
+            } else {
+                updated.add(taskId);
+            }
+            return updated;
+        });
+    };
+
+    const handleSelectAll = () => {
+        const allTaskIds = tasks.map((task) => task.id);
+        setSelectedTasks(new Set(allTaskIds));
+        toast({
+            title: "All Tasks Selected",
+            description: "All tasks have been selected.",
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+        });
+    };
+
+    const handleUnselectAll = () => {
+        setSelectedTasks(new Set());
+        toast({
+            title: "Selections Cleared",
+            description: "All selected tasks have been unselected.",
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+        });
+    };
+
+    const handleDeleteSelectedTasks = async () => {
+        const taskIds = Array.from(selectedTasks);
+        try {
+            const response = await axios.delete("/api/tasks/delete-multiple", {
+                params: { ids: taskIds },
+            });
+            if (response.data.status === "success") {
+                setTasks((prevTasks) =>
+                    prevTasks.filter((task) => !selectedTasks.has(task.id))
+                );
+                setSelectedTasks(new Set());
+                toast({
+                    title: "Tasks Deleted",
+                    description: "Selected tasks have been deleted.",
+                    status: "success",
+                    duration: 5000,
+                    isClosable: true,
+                });
+            }
+        } catch (error) {
+            toast({
+                title: "Error Deleting Tasks",
+                description:
+                    "Could not delete selected tasks. Try again later.",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+            });
+        } finally {
+            onDeleteSelectedClose();
         }
     };
 
@@ -127,14 +207,6 @@ const Home: FC = () => {
                     duration: 5000,
                     isClosable: true,
                 });
-            } else {
-                toast({
-                    title: "Error Adding Task",
-                    description: response.data.message,
-                    status: "error",
-                    duration: 5000,
-                    isClosable: true,
-                });
             }
         } catch (error) {
             toast({
@@ -145,6 +217,21 @@ const Home: FC = () => {
                 isClosable: true,
             });
         }
+    };
+
+    const handleEditButtonClick = (task: Task) => {
+        const formattedTask: Task = {
+            id: task.id,
+            name: task.name || "",
+            category: task.category || "",
+            description: task.description || "",
+            completed: task.completed ?? false,
+            due_date: task.due_date
+                ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
+                : null,
+        };
+        setEditingTask(formattedTask);
+        onEditOpen();
     };
 
     const handleEditTask = async () => {
@@ -174,18 +261,11 @@ const Home: FC = () => {
                     )
                 );
                 setEditingTask(null);
+                onEditClose();
                 toast({
                     title: "Task Updated",
                     description: response.data.message,
                     status: "success",
-                    duration: 5000,
-                    isClosable: true,
-                });
-            } else {
-                toast({
-                    title: "Error Updating Task",
-                    description: response.data.message,
-                    status: "error",
                     duration: 5000,
                     isClosable: true,
                 });
@@ -201,19 +281,9 @@ const Home: FC = () => {
         }
     };
 
-    const handleEditButtonClick = (task: Task) => {
-        const formattedTask = {
-            ...task,
-            due_date: task.due_date
-                ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
-                : "",
-        };
-        setEditingTask(formattedTask);
-    };
-
     const confirmDeleteTask = (task: Task) => {
         setTaskToDelete(task);
-        onOpen();
+        onDeleteOpen();
     };
 
     const handleDeleteTask = async () => {
@@ -232,14 +302,6 @@ const Home: FC = () => {
                     duration: 5000,
                     isClosable: true,
                 });
-            } else {
-                toast({
-                    title: "Error Deleting Task",
-                    description: response.data.message,
-                    status: "error",
-                    duration: 5000,
-                    isClosable: true,
-                });
             }
         } catch (error) {
             toast({
@@ -251,87 +313,104 @@ const Home: FC = () => {
             });
         } finally {
             setTaskToDelete(null);
-            onClose();
+            onDeleteClose();
         }
     };
 
-    const filteredTasks = tasks
-        .filter((task) => {
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                const matchesSearch =
-                    task.name.toLowerCase().includes(query) ||
-                    (task.category &&
-                        task.category.toLowerCase().includes(query)) ||
-                    (task.description &&
-                        task.description.toLowerCase().includes(query));
-                if (!matchesSearch) return false;
+    const filteredTasks = tasks.filter((task) => {
+        const now = dayjs();
+        const query = searchQuery.toLowerCase();
+
+        if (searchQuery) {
+            const matchesName = task.name.toLowerCase().includes(query);
+            const matchesCategory = task.category
+                ?.toLowerCase()
+                .includes(query);
+            const matchesDescription = task.description
+                ?.toLowerCase()
+                .includes(query);
+            if (!(matchesName || matchesCategory || matchesDescription)) {
+                return false;
             }
+        }
 
-            if (filterStatus === "completed") return task.completed;
-            if (filterStatus === "pending") return !task.completed;
+        if (filterStatus === "completed") return task.completed;
+        if (filterStatus === "pending") return !task.completed;
+        if (filterStatus === "urgent") {
+            return (
+                !task.completed &&
+                task.due_date &&
+                dayjs(task.due_date).isBefore(now.add(24, "hour"))
+            );
+        }
+        if (filterStatus === "coming_soon") {
+            return (
+                !task.completed &&
+                task.due_date &&
+                dayjs(task.due_date).isAfter(now.add(24, "hour")) &&
+                dayjs(task.due_date).isBefore(now.add(48, "hour"))
+            );
+        }
+        if (filterStatus === "long_term") {
+            return (
+                !task.completed &&
+                task.due_date &&
+                dayjs(task.due_date).isAfter(now.add(48, "hour"))
+            );
+        }
+        if (filterStatus === "no_due_date") {
+            return (
+                !task.completed &&
+                (!task.due_date || !dayjs(task.due_date).isValid())
+            );
+        }
 
-            if (filterStatus === "urgent") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return task.due_date && hoursDiff <= 24;
-            }
-            if (filterStatus === "coming_soon") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return task.due_date && hoursDiff > 24 && hoursDiff <= 48;
-            }
-            if (filterStatus === "long_term") {
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                return task.due_date && hoursDiff > 48;
-            }
-            if (filterStatus === "no_due_date") return !task.due_date;
+        return true;
+    });
 
-            return true;
-        })
-        .sort((a, b) => {
-            const getPriority = (task: Task): number => {
-                if (task.completed) return 5;
-                if (!task.due_date) return 4;
-                const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
-                if (hoursDiff <= 24) return 1;
-                if (hoursDiff <= 48) return 2;
-                return 3;
-            };
+    const sortedTasks = filteredTasks.sort((a, b) => {
+        const now = dayjs();
 
-            const priorityA = getPriority(a);
-            const priorityB = getPriority(b);
+        const getPriority = (task: Task): number => {
+            if (task.completed) return 5;
+            if (!task.due_date) return 4;
+            const dueDate = dayjs(task.due_date);
+            if (dueDate.isBefore(now.add(24, "hour"))) return 1;
+            if (dueDate.isBefore(now.add(48, "hour"))) return 2;
+            return 3;
+        };
 
-            if (priorityA !== priorityB) return priorityA - priorityB;
+        const priorityA = getPriority(a);
+        const priorityB = getPriority(b);
 
-            if (a.due_date && b.due_date) {
-                return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
-            }
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
 
-            return 0;
-        });
+        if (a.due_date && b.due_date) {
+            return dayjs(a.due_date).isAfter(dayjs(b.due_date)) ? 1 : -1;
+        }
 
-    const paginatedTasks = filteredTasks.slice(
+        return 0;
+    });
+
+    const paginatedTasks = sortedTasks.slice(
         (currentPage - 1) * tasksPerPage,
         currentPage * tasksPerPage
     );
 
     return (
-        <Container mt="10" maxW="container.xl">
-            <Box textAlign="center" mb="10">
-                <Heading as="h1" size="2xl">
-                    Welcome to Task Master Pro!
-                </Heading>
-                <Text fontSize="lg" color="gray.600" mt="2">
-                    The ultimate task management app to keep you productive.
-                </Text>
+        <Container maxW="container.xl" py={10}>
+            <Box textAlign="center" mb={8}>
+                <Heading>Task Manager</Heading>
+                <Text>A better way to organize.</Text>
             </Box>
-
-            <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap="6">
-                <VStack spacing="6">
+            <Grid templateColumns={["1fr", null, "1fr 2fr"]} gap={8}>
+                <VStack spacing={6}>
                     <TaskForm
-                        task={editingTask || newTask}
+                        task={newTask}
                         onInputChange={handleInputChange}
-                        onSave={editingTask ? handleEditTask : handleAddTask}
-                        onCancel={() => setEditingTask(null)}
+                        onSave={handleAddTask}
                     />
                     <TaskFilter
                         searchQuery={searchQuery}
@@ -340,30 +419,47 @@ const Home: FC = () => {
                         setFilterStatus={setFilterStatus}
                     />
                 </VStack>
-
                 <Box>
-                    <Heading
-                        as="h2"
-                        size="lg"
-                        mb="4"
-                        textAlign="center" // Center the title
+                    <Button
+                        colorScheme="teal"
+                        onClick={handleSelectAll}
+                        mb={2}
+                        isDisabled={tasks.length === 0}
                     >
-                        Task List
-                    </Heading>
-                    <SimpleGrid columns={[1, null, 2]} spacing="6">
+                        Select All
+                    </Button>
+                    <Button
+                        colorScheme="red"
+                        onClick={onDeleteSelectedOpen}
+                        isDisabled={selectedTasks.size === 0}
+                        mb={2}
+                    >
+                        Delete Selected
+                    </Button>
+                    <Button
+                        colorScheme="gray"
+                        onClick={handleUnselectAll}
+                        isDisabled={selectedTasks.size === 0}
+                        mb={4}
+                    >
+                        Unselect All
+                    </Button>
+                    <SimpleGrid columns={[1, null, 2]} spacing={6}>
                         {paginatedTasks.map((task) => (
                             <TaskCard
                                 key={task.id}
                                 task={task}
                                 onEdit={handleEditButtonClick}
                                 onDelete={() => confirmDeleteTask(task)}
+                                isSelected={selectedTasks.has(task.id)}
+                                onSelect={() => toggleTaskSelection(task.id)}
                             />
                         ))}
                     </SimpleGrid>
                     <TaskPagination
                         currentPage={currentPage}
                         totalPages={Math.ceil(
-                            filteredTasks.length / tasksPerPage
+                            sortedTasks.length / tasksPerPage
                         )}
                         onPrevious={() =>
                             setCurrentPage((prev) => Math.max(1, prev - 1))
@@ -372,7 +468,7 @@ const Home: FC = () => {
                             setCurrentPage((prev) =>
                                 Math.min(
                                     Math.ceil(
-                                        filteredTasks.length / tasksPerPage
+                                        sortedTasks.length / tasksPerPage
                                     ),
                                     prev + 1
                                 )
@@ -381,27 +477,20 @@ const Home: FC = () => {
                     />
                 </Box>
             </Grid>
-
-            <Modal isOpen={isOpen} onClose={onClose}>
-                <ModalOverlay />
-                <ModalContent>
-                    <ModalHeader>Confirm Delete</ModalHeader>
-                    <ModalCloseButton />
-                    <ModalBody>
-                        Are you sure you want to delete the task{" "}
-                        <strong>{taskToDelete?.name}</strong>? This action
-                        cannot be undone.
-                    </ModalBody>
-                    <ModalFooter>
-                        <Button colorScheme="red" onClick={handleDeleteTask}>
-                            Delete
-                        </Button>
-                        <Button variant="ghost" onClick={onClose}>
-                            Cancel
-                        </Button>
-                    </ModalFooter>
-                </ModalContent>
-            </Modal>
+            <TaskModals
+                editingTask={editingTask}
+                setEditingTask={setEditingTask}
+                onEditSave={handleEditTask}
+                isEditOpen={isEditOpen}
+                onEditClose={onEditClose}
+                taskToDelete={taskToDelete}
+                onDelete={handleDeleteTask}
+                isDeleteOpen={isDeleteOpen}
+                onDeleteClose={onDeleteClose}
+                onDeleteSelected={handleDeleteSelectedTasks}
+                isDeleteSelectedOpen={isDeleteSelectedOpen}
+                onDeleteSelectedClose={onDeleteSelectedClose}
+            />
         </Container>
     );
 };

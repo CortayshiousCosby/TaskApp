@@ -1,5 +1,13 @@
 import React, { FC } from "react";
-import { Box, Heading, Text, Stack, Button } from "@chakra-ui/react";
+import {
+    Box,
+    Heading,
+    Text,
+    Stack,
+    Button,
+    Checkbox,
+    Flex,
+} from "@chakra-ui/react";
 import dayjs from "dayjs";
 
 interface TaskCardProps {
@@ -12,10 +20,18 @@ interface TaskCardProps {
         due_date: string | null;
     };
     onEdit: (task: any) => void;
-    onDelete: (taskId: number) => void; // Expect taskId here
+    onDelete: (taskId: number) => void;
+    isSelected: boolean; // New prop for selection
+    onSelect: () => void; // Callback for when the checkbox is toggled
 }
 
-const TaskCard: FC<TaskCardProps> = ({ task, onEdit, onDelete }) => {
+const TaskCard: FC<TaskCardProps> = ({
+    task,
+    onEdit,
+    onDelete,
+    isSelected,
+    onSelect,
+}) => {
     const getTaskBgColor = (): string => {
         if (task.completed) return "green.100";
         if (!task.due_date) return "blue.100";
@@ -25,11 +41,43 @@ const TaskCard: FC<TaskCardProps> = ({ task, onEdit, onDelete }) => {
         return "yellow.100";
     };
 
+    const getTimeSensitivityLabel = (): string => {
+        if (task.completed) return "(Completed)";
+        if (!task.due_date) return "(No Due Date)";
+        const hoursDiff = dayjs(task.due_date).diff(dayjs(), "hours");
+        if (hoursDiff <= 24) return "(Urgent)";
+        if (hoursDiff <= 48) return "(Coming Soon)";
+        return "(Long Term)";
+    };
+
     return (
-        <Box bg={getTaskBgColor()} borderWidth="1px" p="6" borderRadius="lg">
-            <Heading as="h3" size="md" mb="2">
-                {task.name}
-            </Heading>
+        <Box
+            bg={getTaskBgColor()}
+            borderWidth="1px"
+            p="6"
+            borderRadius="lg"
+            position="relative"
+        >
+            <Flex justifyContent="space-between" alignItems="center" mb="4">
+                <Heading as="h3" size="md">
+                    {task.name}{" "}
+                    <Text as="span" color="gray.500">
+                        {getTimeSensitivityLabel()}
+                    </Text>
+                </Heading>
+                <Checkbox
+                    isChecked={isSelected}
+                    onChange={onSelect}
+                    size="lg"
+                    colorScheme="blackAlpha"
+                    borderColor="black" // Dark outline
+                    _hover={{ borderColor: "gray.700" }} // Darker outline on hover
+                    _checked={{
+                        bg: "black", // Set fill color when checked
+                        borderColor: "black", // Keep outline black
+                    }}
+                />
+            </Flex>
             <Text>
                 <strong>Category:</strong> {task.category || "N/A"}
             </Text>
