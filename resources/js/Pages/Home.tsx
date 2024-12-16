@@ -22,10 +22,17 @@ import TaskForm from "../components/Tasks/TaskForm";
 import TaskCard from "../components/Tasks/TaskCard";
 import TaskFilter from "../components/Tasks/TaskFilter";
 import TaskPagination from "../components/Tasks/TaskPagination";
-import TaskModals from "../components/Tasks/TaskModals";
-import { Task } from "../components/Tasks/types";
 import axios from "axios";
 import dayjs from "dayjs";
+
+interface Task {
+    id: number;
+    name: string;
+    category: string;
+    description?: string;
+    completed: boolean;
+    due_date: string | null;
+}
 
 const tasksPerPage = 6;
 
@@ -220,15 +227,11 @@ const Home: FC = () => {
     };
 
     const handleEditButtonClick = (task: Task) => {
-        const formattedTask: Task = {
-            id: task.id,
-            name: task.name || "",
-            category: task.category || "",
-            description: task.description || "",
-            completed: task.completed ?? false,
+        const formattedTask = {
+            ...task,
             due_date: task.due_date
                 ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
-                : null,
+                : "",
         };
         setEditingTask(formattedTask);
         onEditOpen();
@@ -477,20 +480,66 @@ const Home: FC = () => {
                     />
                 </Box>
             </Grid>
-            <TaskModals
-                editingTask={editingTask}
-                setEditingTask={setEditingTask}
-                onEditSave={handleEditTask}
-                isEditOpen={isEditOpen}
-                onEditClose={onEditClose}
-                taskToDelete={taskToDelete}
-                onDelete={handleDeleteTask}
-                isDeleteOpen={isDeleteOpen}
-                onDeleteClose={onDeleteClose}
-                onDeleteSelected={handleDeleteSelectedTasks}
-                isDeleteSelectedOpen={isDeleteSelectedOpen}
-                onDeleteSelectedClose={onDeleteSelectedClose}
-            />
+            <Modal isOpen={isEditOpen} onClose={onEditClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Edit Task</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <TaskForm
+                            task={editingTask || newTask}
+                            onInputChange={handleInputChange}
+                            onSave={handleEditTask}
+                            onCancel={onEditClose}
+                        />
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
+            <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Confirm Delete</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        Are you sure you want to delete the task{" "}
+                        <strong>{taskToDelete?.name}</strong>? This action
+                        cannot be undone.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button colorScheme="red" onClick={handleDeleteTask}>
+                            Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onDeleteClose}>
+                            Cancel
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+            <Modal
+                isOpen={isDeleteSelectedOpen}
+                onClose={onDeleteSelectedClose}
+            >
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Confirm Delete Selected</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        Are you sure you want to delete the selected tasks? This
+                        action cannot be undone.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button
+                            colorScheme="red"
+                            onClick={handleDeleteSelectedTasks}
+                        >
+                            Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onDeleteSelectedClose}>
+                            Cancel
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Container>
     );
 };
