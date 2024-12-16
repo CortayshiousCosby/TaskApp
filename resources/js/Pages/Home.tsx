@@ -95,9 +95,13 @@ const Home: FC = () => {
     };
 
     const handleInputChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+        >
     ) => {
-        const { name, value, type } = e.target as HTMLInputElement;
+        const { name, value, type } = e.target as
+            | HTMLInputElement
+            | HTMLSelectElement;
         const checked = (e.target as HTMLInputElement).checked;
 
         const formattedValue =

@@ -7,12 +7,15 @@ import {
     Textarea,
     Checkbox,
     Button,
+    Select,
 } from "@chakra-ui/react";
 
 interface TaskFormProps {
     task: any;
     onInputChange: (
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+        >
     ) => void;
     onSave: () => void;
     onCancel?: () => void;
@@ -36,12 +39,17 @@ const TaskForm: React.FC<TaskFormProps> = ({
                     value={task.name || ""}
                     onChange={onInputChange}
                 />
-                <Input
+                <Select
                     name="category"
-                    placeholder="Category"
+                    placeholder="Select Category"
                     value={task.category || ""}
                     onChange={onInputChange}
-                />
+                >
+                    <option value="Work">Work</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Errands">Errands</option>
+                    <option value="Hobbies">Hobbies</option>
+                </Select>
                 <Textarea
                     name="description"
                     placeholder="Description"

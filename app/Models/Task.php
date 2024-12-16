@@ -9,6 +9,13 @@ class Task extends Model
 {
     use HasFactory; // Enable Laravel factory methods for this model
 
+    public const CATEGORIES = [
+        'Work',
+        'Personal',
+        'Errands',
+        'Hobbies',
+    ];
+
     // Allow mass assignment for these attributes
     protected $fillable = ['name', 'category', 'description', 'completed', 'due_date'];
 
@@ -44,5 +51,16 @@ class Task extends Model
     public function setNameAttribute($value)
     {
         $this->attributes['name'] = strtolower($value);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($task) {
+            if (!in_array($task->category, self::CATEGORIES)) {
+                throw new \InvalidArgumentException('Invalid category value.');
+            }
+        });
     }
 }

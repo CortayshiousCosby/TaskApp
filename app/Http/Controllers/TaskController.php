@@ -17,7 +17,10 @@ class TaskController extends Controller
             return response()->json($tasks);
         }
 
-        return Inertia::render('Tasks/Index', ['tasks' => $tasks]);
+        return Inertia::render('Tasks/Index', [
+            'tasks' => Task::all(),
+            'categories' => Task::CATEGORIES,
+        ]);
     }
 
     public function store(Request $request)
@@ -25,7 +28,7 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'category' => 'nullable|string|max:255',
+                'category' => 'required|in:Work,Personal,Errands,Hobbies',
                 'description' => 'nullable|string',
                 'completed' => 'boolean',
                 'due_date' => 'nullable|date',
@@ -59,7 +62,7 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'category' => 'nullable|string|max:255',
+                'category' => 'required|in:Work,Personal,Errands,Hobbies',
                 'description' => 'nullable|string',
                 'completed' => 'boolean',
                 'due_date' => 'nullable|date',
