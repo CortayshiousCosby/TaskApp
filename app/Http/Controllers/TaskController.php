@@ -11,16 +11,13 @@ class TaskController extends Controller
 {
     public function index()
     {
-        $tasks = Task::all();
+        $tasks = Task::with('category')->get(); // Include category relationship
 
         if (request()->expectsJson()) {
             return response()->json($tasks);
         }
 
-        return Inertia::render('Tasks/Index', [
-            'tasks' => Task::all(),
-            'categories' => Task::CATEGORIES,
-        ]);
+        return Inertia::render('Tasks/Index', ['tasks' => $tasks]);
     }
 
     public function store(Request $request)
@@ -28,7 +25,7 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'category' => 'required|in:Work,Personal,Errands,Hobbies',
+                'category_id' => 'required|exists:categories,id', // Updated to category_id
                 'description' => 'nullable|string',
                 'completed' => 'boolean',
                 'due_date' => 'nullable|date',
@@ -36,7 +33,7 @@ class TaskController extends Controller
 
             $task = Task::create($validated);
 
-            if (request()->expectsJson()) {
+            if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Task created successfully.',
@@ -46,7 +43,7 @@ class TaskController extends Controller
 
             return redirect()->back()->with('pageMessage', PageMessage::success('Task created successfully.'));
         } catch (\Exception $e) {
-            if (request()->expectsJson()) {
+            if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Failed to create task: ' . $e->getMessage(),
@@ -62,7 +59,7 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'category' => 'required|in:Work,Personal,Errands,Hobbies',
+                'category_id' => 'required|exists:categories,id', // Updated to category_id
                 'description' => 'nullable|string',
                 'completed' => 'boolean',
                 'due_date' => 'nullable|date',
@@ -124,16 +121,12 @@ class TaskController extends Controller
 
     public function deleteMultiple(Request $request)
     {
-        // \Log::debug($request->toArray());
-
         $validated = $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'integer|exists:tasks,id',
         ]);
 
         try {
-
-
             Task::whereIn('id', $validated['ids'])->delete();
 
             if ($request->expectsJson()) {

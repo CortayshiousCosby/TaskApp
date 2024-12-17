@@ -52,6 +52,9 @@ const Home: FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState<number>(1);
+    const [categories, setCategories] = useState<
+        { id: number; name: string }[]
+    >([]);
 
     const {
         isOpen: isDeleteOpen,
@@ -71,7 +74,23 @@ const Home: FC = () => {
 
     useEffect(() => {
         fetchTasks();
+        fetchCategories();
     }, []);
+
+    const fetchCategories = async () => {
+        try {
+            const response = await axios.get("/api/categories");
+            setCategories(response.data); // Assuming the API returns [{ id: 1, name: "Work" }, ...]
+        } catch (error) {
+            toast({
+                title: "Error Fetching Categories",
+                description: "Could not load categories. Try again later.",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+            });
+        }
+    };
 
     const fetchTasks = async () => {
         try {
@@ -412,6 +431,7 @@ const Home: FC = () => {
                 <VStack spacing={6}>
                     <TaskForm
                         task={newTask}
+                        categories={categories} // Pass categories here
                         onInputChange={handleInputChange}
                         onSave={handleAddTask}
                     />
@@ -488,6 +508,7 @@ const Home: FC = () => {
                     <ModalBody>
                         <TaskForm
                             task={editingTask || newTask}
+                            categories={categories} // Pass categories here
                             onInputChange={handleInputChange}
                             onSave={handleEditTask}
                             onCancel={onEditClose}

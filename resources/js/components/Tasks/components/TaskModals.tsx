@@ -10,8 +10,8 @@ import {
     Button,
     Text,
 } from "@chakra-ui/react";
-import TaskForm from "./components/TaskForm"; // Import your TaskForm component
-import { Task } from "./types";
+import TaskForm from "./TaskForm"; // Import your TaskForm component
+import { Task } from "../types/types";
 
 interface TaskModalsProps {
     editingTask: Partial<Task> | null; // Updated to accept Partial<Task>
@@ -28,6 +28,8 @@ interface TaskModalsProps {
     onDeleteSelected: () => void;
     isDeleteSelectedOpen: boolean;
     onDeleteSelectedClose: () => void;
+
+    categories: { id: number; name: string }[];
 }
 
 const TaskModals: React.FC<TaskModalsProps> = ({
@@ -66,6 +68,7 @@ const TaskModals: React.FC<TaskModalsProps> = ({
                                 onEditClose();
                             }}
                             onCancel={onEditClose}
+                            categories={[]}
                         />
                     </ModalBody>
                 </ModalContent>

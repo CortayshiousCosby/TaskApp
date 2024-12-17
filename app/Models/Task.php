@@ -2,22 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory; // Include HasFactory for factory support
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Task extends Model
 {
-    use HasFactory; // Enable Laravel factory methods for this model
-
-    public const CATEGORIES = [
-        'Work',
-        'Personal',
-        'Errands',
-        'Hobbies',
-    ];
+    use HasFactory;
 
     // Allow mass assignment for these attributes
-    protected $fillable = ['name', 'category', 'description', 'completed', 'due_date'];
+    protected $fillable = ['name', 'category_id', 'description', 'completed', 'due_date'];
 
     // Default values for attributes
     protected $attributes = [
@@ -30,37 +23,43 @@ class Task extends Model
         'due_date' => 'datetime', // Parse due_date as a Carbon instance
     ];
 
-    // Scopes for querying specific types of tasks
+    /**
+     * Define the relationship to the Category model
+     */
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Scope for querying completed tasks
+     */
     public function scopeCompleted($query)
     {
         return $query->where('completed', true);
     }
 
+    /**
+     * Scope for querying pending tasks
+     */
     public function scopePending($query)
     {
         return $query->where('completed', false);
     }
 
-    // Accessor: Format name in title case
+    /**
+     * Accessor: Format name in title case
+     */
     public function getNameAttribute($value)
     {
         return ucwords($value);
     }
 
-    // Mutator: Store the name in lowercase
+    /**
+     * Mutator: Store the name in lowercase
+     */
     public function setNameAttribute($value)
     {
         $this->attributes['name'] = strtolower($value);
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::saving(function ($task) {
-            if (!in_array($task->category, self::CATEGORIES)) {
-                throw new \InvalidArgumentException('Invalid category value.');
-            }
-        });
     }
 }
