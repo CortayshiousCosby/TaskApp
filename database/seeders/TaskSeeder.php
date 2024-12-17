@@ -2,18 +2,31 @@
 
 namespace Database\Seeders;
 
-use App\Models\Task;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use App\Models\Task;
+use App\Models\Category;
 
 class TaskSeeder extends Seeder
 {
     public function run()
     {
+        // Ensure categories exist
+        $workCategory = Category::where('name', 'Work')->first();
+        $personalCategory = Category::where('name', 'Personal')->first();
+        $errandsCategory = Category::where('name', 'Errands')->first();
+        $hobbiesCategory = Category::where('name', 'Hobbies')->first();
+
+        // Check if categories were found
+        if (!$workCategory || !$personalCategory || !$errandsCategory || !$hobbiesCategory) {
+            $this->command->error('Categories are missing. Run the CategorySeeder first.');
+            return;
+        }
+
         // Task in the 'Work' category
         Task::create([
             'name' => 'Team Meeting Preparation',
-            'category' => 'Work',
+            'category_id' => $workCategory->id,
             'description' => 'Prepare slides and agenda for the team meeting.',
             'completed' => false,
             'due_date' => Carbon::now()->addHours(8), // Due in 8 hours
@@ -22,7 +35,7 @@ class TaskSeeder extends Seeder
         // Task in the 'Personal' category
         Task::create([
             'name' => 'Buy Groceries',
-            'category' => 'Personal',
+            'category_id' => $personalCategory->id,
             'description' => 'Purchase groceries for the week.',
             'completed' => false,
             'due_date' => Carbon::now()->addDays(1), // Due tomorrow
@@ -31,7 +44,7 @@ class TaskSeeder extends Seeder
         // Task in the 'Errands' category
         Task::create([
             'name' => 'Post Office Visit',
-            'category' => 'Errands',
+            'category_id' => $errandsCategory->id,
             'description' => 'Drop off packages at the post office.',
             'completed' => false,
             'due_date' => Carbon::now()->addHours(30), // Due in 30 hours
@@ -40,37 +53,10 @@ class TaskSeeder extends Seeder
         // Task in the 'Hobbies' category
         Task::create([
             'name' => 'Painting Class',
-            'category' => 'Hobbies',
+            'category_id' => $hobbiesCategory->id,
             'description' => 'Attend painting class at the community center.',
             'completed' => false,
             'due_date' => Carbon::now()->addDays(3), // Due in 3 days
-        ]);
-
-        // A long-term task in the 'Work' category
-        Task::create([
-            'name' => 'Project Deadline',
-            'category' => 'Work',
-            'description' => 'Complete the project and submit it to the client.',
-            'completed' => false,
-            'due_date' => Carbon::now()->addWeeks(1), // Due in 7 days
-        ]);
-
-        // A completed task in the 'Personal' category
-        Task::create([
-            'name' => 'Morning Run',
-            'category' => 'Personal',
-            'description' => 'Go for a 5km run in the park.',
-            'completed' => true,
-            'due_date' => Carbon::now()->subDays(1), // Completed yesterday
-        ]);
-
-        // A task with no due date in the 'Hobbies' category
-        Task::create([
-            'name' => 'Learn Guitar',
-            'category' => 'Hobbies',
-            'description' => 'Practice guitar chords and scales.',
-            'completed' => false,
-            'due_date' => null, // No due date
         ]);
     }
 }

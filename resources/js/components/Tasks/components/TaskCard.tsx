@@ -14,7 +14,7 @@ interface TaskCardProps {
     task: {
         id: number;
         name: string;
-        category: string;
+        category: { id: number; name: string } | null; // Update to an object
         description?: string;
         completed: boolean;
         due_date: string | null;
@@ -79,7 +79,7 @@ const TaskCard: FC<TaskCardProps> = ({
                 />
             </Flex>
             <Text>
-                <strong>Category:</strong> {task.category || "N/A"}
+                <strong>Category:</strong> {task.category?.name || "N/A"}
             </Text>
             <Text>
                 <strong>Description:</strong>{" "}

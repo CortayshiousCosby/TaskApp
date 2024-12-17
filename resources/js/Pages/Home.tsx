@@ -18,14 +18,22 @@ import {
     useToast,
     VStack,
 } from "@chakra-ui/react";
-import TaskForm from "../components/Tasks/TaskForm";
-import TaskCard from "../components/Tasks/TaskCard";
-import TaskFilter from "../components/Tasks/TaskFilter";
-import TaskPagination from "../components/Tasks/TaskPagination";
-import TaskModals from "../components/Tasks/TaskModals";
-import { Task } from "../components/Tasks/types";
+import TaskForm from "../components/Tasks/components/TaskForm";
+import TaskCard from "../components/Tasks/components/TaskCard";
+import TaskFilter from "../components/Tasks/components/TaskFilter";
+import TaskPagination from "../components/Tasks/components/TaskPagination";
 import axios from "axios";
 import dayjs from "dayjs";
+
+interface Task {
+    id: number;
+    name: string;
+    category: { id: number; name: string } | null;
+    category_id?: number | null;
+    description?: string;
+    completed: boolean;
+    due_date: string | null;
+}
 
 const tasksPerPage = 6;
 
@@ -34,7 +42,7 @@ const Home: FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [newTask, setNewTask] = useState<Partial<Task>>({
         name: "",
-        category: "",
+        category_id: null, // Use category_id for task creation
         description: "",
         completed: false,
         due_date: "",
@@ -45,6 +53,9 @@ const Home: FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState<number>(1);
+    const [categories, setCategories] = useState<
+        { id: number; name: string }[]
+    >([]);
 
     const {
         isOpen: isDeleteOpen,
@@ -63,18 +74,48 @@ const Home: FC = () => {
     } = useDisclosure();
 
     useEffect(() => {
-        fetchTasks();
+        fetchCategories(); // Fetch categories first
     }, []);
+
+    useEffect(() => {
+        if (categories.length > 0) {
+            fetchTasks();
+        }
+    }, [categories]); // Fetch tasks only after categories are available
+
+    const fetchCategories = async () => {
+        try {
+            const response = await axios.get("/api/categories");
+            setCategories(response.data); // Assuming the API returns [{ id: 1, name: "Work" }, ...]
+        } catch (error) {
+            toast({
+                title: "Error Fetching Categories",
+                description: "Could not load categories. Try again later.",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+            });
+        }
+    };
 
     const fetchTasks = async () => {
         try {
             const response = await axios.get<Task[]>("/api/tasks");
-            const formattedTasks = response.data.map((task) => ({
-                ...task,
-                due_date: task.due_date
-                    ? dayjs(task.due_date).toISOString()
-                    : null,
-            }));
+
+            const formattedTasks = response.data.map((task) => {
+                const categoryObject = categories.find(
+                    (cat) => cat.id === (task as any).category_id // Temporary cast for category_id
+                );
+
+                return {
+                    ...task,
+                    category: categoryObject || null, // Map to { id, name }
+                    due_date: task.due_date
+                        ? dayjs(task.due_date).toISOString()
+                        : null,
+                };
+            });
+
             setTasks(formattedTasks);
         } catch (error) {
             toast({
@@ -92,23 +133,28 @@ const Home: FC = () => {
             HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
         >
     ) => {
-        const { name, value, type } = e.target as
-            | HTMLInputElement
-            | HTMLSelectElement;
+        const { name, value, type } = e.target;
         const checked = (e.target as HTMLInputElement).checked;
 
-        const formattedValue =
-            name === "due_date" && type === "datetime-local" ? value : value;
+        let formattedValue;
+
+        if (name === "due_date" && type === "datetime-local") {
+            formattedValue = value;
+        } else if (name === "category_id") {
+            formattedValue = value ? Number(value) : null; // Convert to number or null
+        } else {
+            formattedValue = type === "checkbox" ? checked : value;
+        }
 
         if (editingTask) {
             setEditingTask({
                 ...editingTask,
-                [name]: type === "checkbox" ? checked : formattedValue,
+                [name]: formattedValue,
             });
         } else {
             setNewTask({
                 ...newTask,
-                [name]: type === "checkbox" ? checked : formattedValue,
+                [name]: formattedValue,
             });
         }
     };
@@ -184,22 +230,36 @@ const Home: FC = () => {
     const handleAddTask = async () => {
         try {
             const taskToSave = {
-                ...newTask,
+                name: newTask.name,
+                category_id: newTask.category_id, // Ensure category_id is sent
+                description: newTask.description,
+                completed: newTask.completed,
                 due_date: newTask.due_date
                     ? dayjs(newTask.due_date).toISOString()
                     : null,
             };
 
             const response = await axios.post("/tasks", taskToSave);
+
             if (response.data.status === "success") {
-                setTasks([...tasks, response.data.task]);
+                const newTaskWithCategory = {
+                    ...response.data.task,
+                    category:
+                        categories.find(
+                            (cat) => cat.id === response.data.task.category_id
+                        ) || null,
+                };
+
+                setTasks((prevTasks) => [...prevTasks, newTaskWithCategory]);
+
                 setNewTask({
                     name: "",
-                    category: "",
+                    category_id: null, // Reset to null
                     description: "",
                     completed: false,
                     due_date: "",
                 });
+
                 toast({
                     title: "Task Added",
                     description: response.data.message,
@@ -209,6 +269,7 @@ const Home: FC = () => {
                 });
             }
         } catch (error) {
+            console.error("Error adding task:", error);
             toast({
                 title: "Error Adding Task",
                 description: "Ensure task details are correct.",
@@ -218,17 +279,12 @@ const Home: FC = () => {
             });
         }
     };
-
     const handleEditButtonClick = (task: Task) => {
-        const formattedTask: Task = {
-            id: task.id,
-            name: task.name || "",
-            category: task.category || "",
-            description: task.description || "",
-            completed: task.completed ?? false,
+        const formattedTask = {
+            ...task,
             due_date: task.due_date
                 ? dayjs(task.due_date).format("YYYY-MM-DDTHH:mm")
-                : null,
+                : "",
         };
         setEditingTask(formattedTask);
         onEditOpen();
@@ -249,19 +305,30 @@ const Home: FC = () => {
                 `/tasks/${editingTask.id}`,
                 taskToSave
             );
+
             if (response.data.status === "success") {
+                const updatedTask = response.data.task;
+
+                // Find the category object for the updated task using category_id
+                const categoryObject = categories.find(
+                    (cat) => cat.id === Number(updatedTask.category_id)
+                );
+
+                // Update tasks state with the updated task and the correct category
                 setTasks((prevTasks) =>
                     prevTasks.map((task) =>
-                        task.id === response.data.task.id
+                        task.id === updatedTask.id
                             ? {
-                                  ...response.data.task,
-                                  due_date: taskToSave.due_date,
+                                  ...updatedTask,
+                                  category: categoryObject || null,
                               }
                             : task
                     )
                 );
+
                 setEditingTask(null);
                 onEditClose();
+
                 toast({
                     title: "Task Updated",
                     description: response.data.message,
@@ -271,6 +338,7 @@ const Home: FC = () => {
                 });
             }
         } catch (error) {
+            console.error(error);
             toast({
                 title: "Error Updating Task",
                 description: "Ensure task details are correct.",
@@ -323,8 +391,8 @@ const Home: FC = () => {
 
         if (searchQuery) {
             const matchesName = task.name.toLowerCase().includes(query);
-            const matchesCategory = task.category
-                ?.toLowerCase()
+            const matchesCategory = task.category?.name
+                .toLowerCase()
                 .includes(query);
             const matchesDescription = task.description
                 ?.toLowerCase()
@@ -409,6 +477,7 @@ const Home: FC = () => {
                 <VStack spacing={6}>
                     <TaskForm
                         task={newTask}
+                        categories={categories} // Pass categories here
                         onInputChange={handleInputChange}
                         onSave={handleAddTask}
                     />
@@ -477,20 +546,67 @@ const Home: FC = () => {
                     />
                 </Box>
             </Grid>
-            <TaskModals
-                editingTask={editingTask}
-                setEditingTask={setEditingTask}
-                onEditSave={handleEditTask}
-                isEditOpen={isEditOpen}
-                onEditClose={onEditClose}
-                taskToDelete={taskToDelete}
-                onDelete={handleDeleteTask}
-                isDeleteOpen={isDeleteOpen}
-                onDeleteClose={onDeleteClose}
-                onDeleteSelected={handleDeleteSelectedTasks}
-                isDeleteSelectedOpen={isDeleteSelectedOpen}
-                onDeleteSelectedClose={onDeleteSelectedClose}
-            />
+            <Modal isOpen={isEditOpen} onClose={onEditClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Edit Task</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <TaskForm
+                            task={editingTask || newTask}
+                            categories={categories} // Pass categories here
+                            onInputChange={handleInputChange}
+                            onSave={handleEditTask}
+                            onCancel={onEditClose}
+                        />
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
+            <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Confirm Delete</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        Are you sure you want to delete the task{" "}
+                        <strong>{taskToDelete?.name}</strong>? This action
+                        cannot be undone.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button colorScheme="red" onClick={handleDeleteTask}>
+                            Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onDeleteClose}>
+                            Cancel
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+            <Modal
+                isOpen={isDeleteSelectedOpen}
+                onClose={onDeleteSelectedClose}
+            >
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Confirm Delete Selected</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        Are you sure you want to delete the selected tasks? This
+                        action cannot be undone.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button
+                            colorScheme="red"
+                            onClick={handleDeleteSelectedTasks}
+                        >
+                            Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onDeleteSelectedClose}>
+                            Cancel
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Container>
     );
 };

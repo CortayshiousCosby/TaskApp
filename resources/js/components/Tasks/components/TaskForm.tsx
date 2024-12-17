@@ -9,9 +9,11 @@ import {
     Button,
     Select,
 } from "@chakra-ui/react";
+import { Task } from "../types/types";
 
 interface TaskFormProps {
-    task: any;
+    task: Partial<Task>;
+    categories: { id: number; name: string }[];
     onInputChange: (
         e: React.ChangeEvent<
             HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -23,6 +25,7 @@ interface TaskFormProps {
 
 const TaskForm: React.FC<TaskFormProps> = ({
     task,
+    categories,
     onInputChange,
     onSave,
     onCancel,
@@ -40,15 +43,16 @@ const TaskForm: React.FC<TaskFormProps> = ({
                     onChange={onInputChange}
                 />
                 <Select
-                    name="category"
+                    name="category_id"
                     placeholder="Select Category"
-                    value={task.category || ""}
+                    value={task.category_id || ""}
                     onChange={onInputChange}
                 >
-                    <option value="Work">Work</option>
-                    <option value="Personal">Personal</option>
-                    <option value="Errands">Errands</option>
-                    <option value="Hobbies">Hobbies</option>
+                    {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                            {category.name}
+                        </option>
+                    ))}
                 </Select>
                 <Textarea
                     name="description"
