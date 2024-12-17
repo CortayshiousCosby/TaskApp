@@ -271,19 +271,33 @@ const Home: FC = () => {
                 `/tasks/${editingTask.id}`,
                 taskToSave
             );
+
             if (response.data.status === "success") {
+                const updatedTask = response.data.task;
+
+                // Find the updated category name from categories
+                const category = categories.find(
+                    (cat) => cat.id === updatedTask.category_id
+                );
+
+                // Add the category object to the updated task
+                const taskWithCategory = {
+                    ...updatedTask,
+                    category: category
+                        ? { id: category.id, name: category.name }
+                        : null,
+                };
+
+                // Update tasks array
                 setTasks((prevTasks) =>
                     prevTasks.map((task) =>
-                        task.id === response.data.task.id
-                            ? {
-                                  ...response.data.task,
-                                  due_date: taskToSave.due_date,
-                              }
-                            : task
+                        task.id === updatedTask.id ? taskWithCategory : task
                     )
                 );
+
                 setEditingTask(null);
                 onEditClose();
+
                 toast({
                     title: "Task Updated",
                     description: response.data.message,
@@ -293,6 +307,7 @@ const Home: FC = () => {
                 });
             }
         } catch (error) {
+            console.error(error);
             toast({
                 title: "Error Updating Task",
                 description: "Ensure task details are correct.",
