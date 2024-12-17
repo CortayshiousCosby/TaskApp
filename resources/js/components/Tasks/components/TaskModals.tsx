@@ -10,7 +10,7 @@ import {
     Button,
     Text,
 } from "@chakra-ui/react";
-import TaskForm from "./TaskForm"; // Import your TaskForm component
+import TaskForm from "./components/TaskForm"; // Import your TaskForm component
 import { Task } from "./types";
 
 interface TaskModalsProps {

@@ -18,10 +18,10 @@ import {
     useToast,
     VStack,
 } from "@chakra-ui/react";
-import TaskForm from "../components/Tasks/TaskForm";
-import TaskCard from "../components/Tasks/TaskCard";
-import TaskFilter from "../components/Tasks/TaskFilter";
-import TaskPagination from "../components/Tasks/TaskPagination";
+import TaskForm from "../components/Tasks/components/TaskForm";
+import TaskCard from "../components/Tasks/components/TaskCard";
+import TaskFilter from "../components/Tasks/components/TaskFilter";
+import TaskPagination from "../components/Tasks/components/TaskPagination";
 import axios from "axios";
 import dayjs from "dayjs";
 
