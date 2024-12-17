@@ -74,12 +74,14 @@ const Home: FC = () => {
     } = useDisclosure();
 
     useEffect(() => {
-        const fetchData = async () => {
-            await fetchCategories();
-            await fetchTasks();
-        };
-        fetchData();
+        fetchCategories(); // Fetch categories first
     }, []);
+
+    useEffect(() => {
+        if (categories.length > 0) {
+            fetchTasks();
+        }
+    }, [categories]); // Fetch tasks only after categories are available
 
     const fetchCategories = async () => {
         try {
