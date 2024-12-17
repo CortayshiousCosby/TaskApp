@@ -28,8 +28,7 @@ import dayjs from "dayjs";
 interface Task {
     id: number;
     name: string;
-    category: { id: number; name: string } | null;
-    category_id?: number | null;
+    category: string;
     description?: string;
     completed: boolean;
     due_date: string | null;
@@ -42,7 +41,7 @@ const Home: FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [newTask, setNewTask] = useState<Partial<Task>>({
         name: "",
-        category_id: null, // Use category_id for task creation
+        category: "",
         description: "",
         completed: false,
         due_date: "",
@@ -74,11 +73,8 @@ const Home: FC = () => {
     } = useDisclosure();
 
     useEffect(() => {
-        const fetchData = async () => {
-            await fetchCategories();
-            await fetchTasks();
-        };
-        fetchData();
+        fetchTasks();
+        fetchCategories();
     }, []);
 
     const fetchCategories = async () => {
@@ -99,21 +95,12 @@ const Home: FC = () => {
     const fetchTasks = async () => {
         try {
             const response = await axios.get<Task[]>("/api/tasks");
-
-            const formattedTasks = response.data.map((task) => {
-                const categoryObject = categories.find(
-                    (cat) => cat.id === (task as any).category_id // Temporary cast for category_id
-                );
-
-                return {
-                    ...task,
-                    category: categoryObject || null, // Map to { id, name }
-                    due_date: task.due_date
-                        ? dayjs(task.due_date).toISOString()
-                        : null,
-                };
-            });
-
+            const formattedTasks = response.data.map((task) => ({
+                ...task,
+                due_date: task.due_date
+                    ? dayjs(task.due_date).toISOString()
+                    : null,
+            }));
             setTasks(formattedTasks);
         } catch (error) {
             toast({
@@ -131,28 +118,23 @@ const Home: FC = () => {
             HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
         >
     ) => {
-        const { name, value, type } = e.target;
+        const { name, value, type } = e.target as
+            | HTMLInputElement
+            | HTMLSelectElement;
         const checked = (e.target as HTMLInputElement).checked;
 
-        let formattedValue;
-
-        if (name === "due_date" && type === "datetime-local") {
-            formattedValue = value;
-        } else if (name === "category_id") {
-            formattedValue = value ? Number(value) : null; // Convert to number or null
-        } else {
-            formattedValue = type === "checkbox" ? checked : value;
-        }
+        const formattedValue =
+            name === "due_date" && type === "datetime-local" ? value : value;
 
         if (editingTask) {
             setEditingTask({
                 ...editingTask,
-                [name]: formattedValue,
+                [name]: type === "checkbox" ? checked : formattedValue,
             });
         } else {
             setNewTask({
                 ...newTask,
-                [name]: formattedValue,
+                [name]: type === "checkbox" ? checked : formattedValue,
             });
         }
     };
@@ -228,36 +210,22 @@ const Home: FC = () => {
     const handleAddTask = async () => {
         try {
             const taskToSave = {
-                name: newTask.name,
-                category_id: newTask.category_id, // Ensure category_id is sent
-                description: newTask.description,
-                completed: newTask.completed,
+                ...newTask,
                 due_date: newTask.due_date
                     ? dayjs(newTask.due_date).toISOString()
                     : null,
             };
 
             const response = await axios.post("/tasks", taskToSave);
-
             if (response.data.status === "success") {
-                const newTaskWithCategory = {
-                    ...response.data.task,
-                    category:
-                        categories.find(
-                            (cat) => cat.id === response.data.task.category_id
-                        ) || null,
-                };
-
-                setTasks((prevTasks) => [...prevTasks, newTaskWithCategory]);
-
+                setTasks([...tasks, response.data.task]);
                 setNewTask({
                     name: "",
-                    category_id: null, // Reset to null
+                    category: "",
                     description: "",
                     completed: false,
                     due_date: "",
                 });
-
                 toast({
                     title: "Task Added",
                     description: response.data.message,
@@ -267,7 +235,6 @@ const Home: FC = () => {
                 });
             }
         } catch (error) {
-            console.error("Error adding task:", error);
             toast({
                 title: "Error Adding Task",
                 description: "Ensure task details are correct.",
@@ -277,6 +244,7 @@ const Home: FC = () => {
             });
         }
     };
+
     const handleEditButtonClick = (task: Task) => {
         const formattedTask = {
             ...task,
@@ -307,20 +275,23 @@ const Home: FC = () => {
             if (response.data.status === "success") {
                 const updatedTask = response.data.task;
 
-                // Find the category object for the updated task using category_id
-                const categoryObject = categories.find(
-                    (cat) => cat.id === Number(updatedTask.category_id)
+                // Find the updated category name from categories
+                const category = categories.find(
+                    (cat) => cat.id === updatedTask.category_id
                 );
 
-                // Update tasks state with the updated task and the correct category
+                // Add the category object to the updated task
+                const taskWithCategory = {
+                    ...updatedTask,
+                    category: category
+                        ? { id: category.id, name: category.name }
+                        : null,
+                };
+
+                // Update tasks array
                 setTasks((prevTasks) =>
                     prevTasks.map((task) =>
-                        task.id === updatedTask.id
-                            ? {
-                                  ...updatedTask,
-                                  category: categoryObject || null,
-                              }
-                            : task
+                        task.id === updatedTask.id ? taskWithCategory : task
                     )
                 );
 
@@ -389,8 +360,8 @@ const Home: FC = () => {
 
         if (searchQuery) {
             const matchesName = task.name.toLowerCase().includes(query);
-            const matchesCategory = task.category?.name
-                .toLowerCase()
+            const matchesCategory = task.category
+                ?.toLowerCase()
                 .includes(query);
             const matchesDescription = task.description
                 ?.toLowerCase()
