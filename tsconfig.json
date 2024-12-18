@@ -9,6 +9,7 @@
         "skipLibCheck": true,
         "paths": {
             "@contexts/*": ["./contexts/*"]
-        }
+        },
+        "types": ["vite/client"]
     }
 }

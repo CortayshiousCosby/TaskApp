@@ -8,6 +8,13 @@ use Illuminate\Support\Facades\Route;
 // Dashboard route
 Route::get('/', [HomeController::class, 'index'])->name('dashboard.index');
 
+// Task resource routes for handling CRUD operations
+
+Route::resources([
+    'tasks' => TaskController::class,
+    'categories' => CategoryController::class,
+]);
+
 // API routes for JSON data
 Route::prefix('api')->group(function () {
     // Task routes
@@ -17,6 +24,3 @@ Route::prefix('api')->group(function () {
     // Category route
     Route::get('/categories', [CategoryController::class, 'index'])->name('api.categories.index');
 });
-
-// Task resource routes for handling CRUD operations
-Route::resource('/tasks', TaskController::class);

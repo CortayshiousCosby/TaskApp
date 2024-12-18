@@ -9,9 +9,27 @@ class HomeController extends Controller
 {
     public function index(Request $request)
     {
-        return Inertia::render('Home', [
+        $content = [];
+
+        $content[] = [
+            'title' => 'Manage Task',
+            'description' => 'Add, edit and delete tasks.',
+            'icon' => '🚀',
+            'parent_id' => null,
+            'url' => route('tasks.index'),
+        ];
+
+        $content[] = [
+            'title' => 'Manage Categories',
+            'description' => 'Add and edit categories.',
+            'icon' => '🔧',
+            'parent_id' => null,
+            'url' => route('categories.index'),
+        ];
+        return Inertia::render('Home/Index', [
             'title' => 'Task Manager',
-            'greeting' => 'Welcome! Let’s get productive and manage your tasks.',
+            'description' => 'Welcome! Let’s get productive and manage your tasks.',
+            'content' => $content,
         ]);
     }
 }
