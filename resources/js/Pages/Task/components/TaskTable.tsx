@@ -19,7 +19,7 @@ const TaskTable: FC = () => {
 
     return (
         <TableContainer>
-            <Table fontSize="sm">
+            <Table fontSize="sm" variant={"striped"}>
                 <Thead>
                     <Tr>
                         <Th>Status</Th>
