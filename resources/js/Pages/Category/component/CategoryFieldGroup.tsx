@@ -1,10 +1,11 @@
 import {
+    Box,
     Button,
     FormControl,
     FormLabel,
+    Heading,
     Input,
     VStack,
-    Heading,
 } from "@chakra-ui/react";
 import { useForm } from "@inertiajs/react";
 import { FC } from "react";
@@ -25,13 +26,16 @@ const CategoryFieldGroup: FC<CategoryFieldGroupProps> = ({
 
     function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
+        console.log("Form Data:", data);
 
         if (method === "POST") {
-            post("/categories");
+            post("/category");
         }
 
-        if (method === "PUT") {
-            put(`/categories/${defaultValues.id}`);
+        if (method === "PUT" && defaultValues.id) {
+            put(`/category/${defaultValues.id}`);
+        } else {
+            console.error("Category ID is missing for the PUT request");
         }
     }
 
@@ -39,18 +43,26 @@ const CategoryFieldGroup: FC<CategoryFieldGroupProps> = ({
         <form onSubmit={handleSubmit}>
             <VStack align="stretch" gap={4} py={4}>
                 {title && <Heading size="md">{title}</Heading>}
-                <FormControl>
-                    <FormLabel>Category Name</FormLabel>
-                    <Input
-                        type="text"
-                        name="name"
-                        value={data.name || ""}
-                        onChange={(e) => setData("name", e.target.value)}
-                    />
-                </FormControl>
-                <Button colorScheme="green" leftIcon={<LuSave />} type="submit">
-                    Save
-                </Button>
+                <Box>
+                    <FormControl>
+                        <FormLabel>Category Name</FormLabel>
+                        <Input
+                            type="text"
+                            name="name"
+                            value={data.name}
+                            onChange={(e) => setData("name", e.target.value)}
+                        />
+                    </FormControl>
+                </Box>
+                <Box>
+                    <Button
+                        colorScheme="green"
+                        leftIcon={<LuSave />}
+                        type="submit"
+                    >
+                        Save
+                    </Button>
+                </Box>
             </VStack>
         </form>
     );

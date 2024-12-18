@@ -63,7 +63,7 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'category' => 'required|in:Work,Personal,Errands,Hobbies',
+                'category_id' => 'required|integer|exists:categories,id', // Ensure category_id exists in the categories table
                 'description' => 'nullable|string',
                 'completed' => 'boolean',
                 'due_date' => 'nullable|date',

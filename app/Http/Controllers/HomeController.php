@@ -24,7 +24,7 @@ class HomeController extends Controller
             'description' => 'Add and edit categories.',
             'icon' => '🔧',
             'parent_id' => null,
-            'url' => route('categories.index'),
+            'url' => route('category.index'),
         ];
         return Inertia::render('Home/Index', [
             'title' => 'Task Manager',
