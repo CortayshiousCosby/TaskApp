@@ -22,5 +22,5 @@ Route::prefix('api')->group(function () {
     Route::delete('/tasks/delete-multiple', [TaskController::class, 'deleteMultiple'])->name('api.tasks.deleteMultiple');
 
     // Category route
-    Route::get('/categories', [CategoryController::class, 'index'])->name('api.categories.index');
+    Route::get('/category', [CategoryController::class, 'index'])->name('api.category.index');
 });

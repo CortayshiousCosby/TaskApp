@@ -18,7 +18,7 @@ class CategoryController extends Controller
             return response()->json($categories);
         }
 
-        return Inertia::render('Categories/Index', [
+        return Inertia::render('Category/Index', [
             'title' => 'Categories',
             'description' => 'Add and edit categories.',
         ]);

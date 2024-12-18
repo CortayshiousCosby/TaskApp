@@ -5,9 +5,9 @@ import { CategoryProps } from "../types/Category";
 
 export function useCategories(): UseQueryResult<CategoryProps[]> {
     return useQuery({
-        queryKey: ["api", "categories"],
+        queryKey: ["api", "category"],
         queryFn: async () => {
-            const response = await axios.get("/api/categories");
+            const response = await axios.get("/api/category");
 
             return response.data;
         },
