@@ -34,6 +34,8 @@ class HandleInertiaRequests extends Middleware
         return array_merge(parent::share($request), [
             // Share the flash message for use in the PageMessage component
             'pageMessage' => fn() => $request->session()->get('pageMessage', null),
+            'taskApiUrl' => route('api.tasks.index'),
+            'categoryApiUrl' => route('api.categories.index'),
         ]);
     }
 }

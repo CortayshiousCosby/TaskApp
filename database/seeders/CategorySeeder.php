@@ -13,11 +13,13 @@ class CategorySeeder extends Seeder
         $categories = ['Work', 'Personal', 'Errands', 'Hobbies', 'Urgent', 'Long Term'];
 
         foreach ($categories as $category) {
-            DB::table('categories')->insert([
-                'name' => $category,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-            ]);
+            DB::table('categories')->updateOrInsert(
+                ['name' => $category], // Unique constraint
+                [
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]
+            );
         }
     }
 }
