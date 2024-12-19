@@ -7,9 +7,10 @@ import TaskFieldGroup from "./TaskFieldGroup";
 
 type TaskActionMenuProps = {
     task: TaskProps;
+    onDelete: (taskId: number) => void; // Add onDelete prop
 };
 
-const TaskActionMenu: FC<TaskActionMenuProps> = ({ task }) => {
+const TaskActionMenu: FC<TaskActionMenuProps> = ({ task, onDelete }) => {
     return (
         <HStack>
             <ModalDisplay
@@ -31,6 +32,7 @@ const TaskActionMenu: FC<TaskActionMenuProps> = ({ task }) => {
                 aria-label="Delete"
                 icon={<DeleteIcon />}
                 colorScheme="red"
+                onClick={() => onDelete(task.id)} // Call onDelete when clicked
             />
         </HStack>
     );

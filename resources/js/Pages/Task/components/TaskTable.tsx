@@ -8,14 +8,45 @@ import {
     Th,
     Thead,
     Tr,
+    useToast,
 } from "@chakra-ui/react";
-import React, { FC } from "react";
+import React, { FC, useState } from "react";
 import moment from "moment";
 import TaskActionMenu from "./TaskActionMenu";
 import { useTasks } from "../../../hooks/use-tasks";
+import axios from "axios";
 
 const TaskTable: FC = () => {
-    const { data, isSuccess, isLoading } = useTasks();
+    const toast = useToast();
+    const { data, isSuccess, isLoading, refetch } = useTasks(); // Include refetch to update the table after deletion
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDeleteTask = async (taskId: number) => {
+        setIsDeleting(true);
+        try {
+            const response = await axios.delete(`/tasks/${taskId}`);
+            if (response.data.status === "success") {
+                toast({
+                    title: "Task Deleted",
+                    description: response.data.message,
+                    status: "success",
+                    duration: 5000,
+                    isClosable: true,
+                });
+                refetch(); // Refetch tasks to update the table
+            }
+        } catch (error) {
+            toast({
+                title: "Error Deleting Task",
+                description: "An unexpected error occurred.",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+            });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     return (
         <TableContainer>
@@ -67,7 +98,10 @@ const TaskTable: FC = () => {
                                         : ""}
                                 </Td>
                                 <Td>
-                                    <TaskActionMenu task={task} />
+                                    <TaskActionMenu
+                                        task={task}
+                                        onDelete={handleDeleteTask}
+                                    />
                                 </Td>
                             </Tr>
                         ))}
