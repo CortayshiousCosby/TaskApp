@@ -7,13 +7,40 @@ import {
     Tbody,
     Tr,
     Td,
+    useToast,
 } from "@chakra-ui/react";
 import { FC } from "react";
 import CategoryActionMenu from "./CategoryActionMenu";
 import { useCategories } from "../../../hooks/use-categories";
+import axios from "axios";
 
 const CategoryTable: FC = () => {
-    const { data, isLoading, isSuccess } = useCategories();
+    const toast = useToast();
+    const { data, isLoading, isSuccess, refetch } = useCategories();
+
+    const handleDeleteCategory = async (categoryId: number) => {
+        try {
+            const response = await axios.delete(`/api/category/${categoryId}`);
+            if (response.data.message === "Category deleted successfully") {
+                toast({
+                    title: "Category Deleted",
+                    description: "The category was successfully deleted.",
+                    status: "success",
+                    duration: 5000,
+                    isClosable: true,
+                });
+                refetch(); // Refetch categories to update the table
+            }
+        } catch (error) {
+            toast({
+                title: "Error Deleting Category",
+                description: "An unexpected error occurred.",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+            });
+        }
+    };
 
     return (
         <TableContainer>
@@ -39,7 +66,10 @@ const CategoryTable: FC = () => {
                                 <Td>{category.id}</Td>
                                 <Td>{category.name}</Td>
                                 <Td textAlign="right">
-                                    <CategoryActionMenu category={category} />
+                                    <CategoryActionMenu
+                                        category={category}
+                                        onDelete={handleDeleteCategory}
+                                    />
                                 </Td>
                             </Tr>
                         ))}

@@ -6,9 +6,13 @@ import CategoryFieldGroup from "./CategoryFieldGroup";
 
 type CategoryActionMenuProps = {
     category: { id: number; name: string };
+    onDelete: (categoryId: number) => void; // Add onDelete prop
 };
 
-const CategoryActionMenu: FC<CategoryActionMenuProps> = ({ category }) => {
+const CategoryActionMenu: FC<CategoryActionMenuProps> = ({
+    category,
+    onDelete,
+}) => {
     return (
         <HStack justify="flex-end">
             <ModalDisplay
@@ -30,16 +34,7 @@ const CategoryActionMenu: FC<CategoryActionMenuProps> = ({ category }) => {
                 aria-label="Delete"
                 icon={<DeleteIcon />}
                 colorScheme="red"
-                onClick={() => {
-                    fetch(`/category/${category.id}`, {
-                        method: "DELETE",
-                        headers: {
-                            "X-CSRF-TOKEN": document.head
-                                .querySelector('meta[name="csrf-token"]')
-                                ?.getAttribute("content")!,
-                        },
-                    }).then(() => window.location.reload());
-                }}
+                onClick={() => onDelete(category.id)}
             />
         </HStack>
     );
