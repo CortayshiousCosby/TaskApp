@@ -19,12 +19,14 @@ type TaskFieldGroupProps = {
     title?: string;
     defaultValues?: Record<string, any>;
     method: "POST" | "PUT";
+    onSuccessCallback?: () => void;
 };
 
 const TaskFieldGroup: FC<TaskFieldGroupProps> = ({
     title,
     defaultValues = {},
     method = "POST",
+    onSuccessCallback,
 }) => {
     const { data, setData, post, put } = useForm(defaultValues);
     const { data: categoryData, isSuccess } = useCategories();
@@ -34,7 +36,13 @@ const TaskFieldGroup: FC<TaskFieldGroupProps> = ({
         console.log(data);
 
         if (method === "POST") {
-            post("/tasks");
+            post("/tasks", {
+                onSuccess: () => {
+                    if (onSuccessCallback) {
+                        onSuccessCallback();
+                    }
+                },
+            });
         }
 
         if (method === "PUT") {

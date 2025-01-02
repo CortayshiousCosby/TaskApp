@@ -29,7 +29,7 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'category' => 'required|in:Work,Personal,Errands,Hobbies',
+                'category_id' => 'nullable|exists:categories,id',
                 'description' => 'nullable|string',
                 'completed' => 'boolean',
                 'due_date' => 'nullable|date',
@@ -60,25 +60,21 @@ class TaskController extends Controller
 
     public function update(Request $request, Task $task)
     {
-        try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'category' => 'required|in:Work,Personal,Errands,Hobbies',
-                'description' => 'nullable|string',
-                'completed' => 'boolean',
-                'due_date' => 'nullable|date',
-            ]);
+        \Log::info('Request Data:', $request->all());
 
-            $task->update($validated);
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'category_id' => 'required|exists:categories,id',
+            'description' => 'nullable|string',
+            'completed' => 'boolean',
+            'due_date' => 'nullable|date',
+        ]);
 
-            $pageMessage = PageMessage::success('Task updated successfully.');
+        \Log::info('Validation Passed');
+        // $task->update($validated);
 
-            return redirect()->back()->with('pageMessage', $pageMessage);
-        } catch (\Exception $e) {
-            $pageMessage = PageMessage::error('Failed to update task: ' . $e->getMessage());
-
-            return redirect()->back()->with('pageMessage', $pageMessage);
-        }
+        return to_route('categories.index');
+        // return back()->with('pageMessage', 'Task updated successfully');
     }
 
     public function destroy(Task $task)
